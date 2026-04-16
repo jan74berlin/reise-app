@@ -7,7 +7,6 @@ let token: string;
 let tripId: string;
 
 beforeAll(async () => {
-  await pool.query("DELETE FROM users WHERE email = 'triptest@test-reise.de'");
   await pool.query("DELETE FROM families WHERE name = 'TripTestFam'");
   const res = await request(app).post('/api/v1/auth/register').send({
     email: 'triptest@test-reise.de', password: 'pw', display_name: 'Tester', family_name: 'TripTestFam',
