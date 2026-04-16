@@ -6,10 +6,11 @@ export const nightsRouter = Router({ mergeParams: true });
 nightsRouter.use(requireAuth);
 
 nightsRouter.get('/', async (req, res) => {
+  const params = req.params as Record<string, string>;
   const r = await withFamily(req.user.familyId, async (c) => {
     const nights = await c.query(
       'SELECT * FROM nights WHERE trip_id = $1 ORDER BY night_number',
-      [req.params.tripId]
+      [params.tripId]
     );
     for (const night of nights.rows) {
       const spots = await c.query(
@@ -27,17 +28,19 @@ nightsRouter.get('/', async (req, res) => {
 });
 
 nightsRouter.post('/', async (req, res) => {
+  const params = req.params as Record<string, string>;
   const { night_number, date, lat_center, lng_center, notes } = req.body;
   const r = await withFamily(req.user.familyId, (c) =>
     c.query(
       'INSERT INTO nights (trip_id, night_number, date, lat_center, lng_center, notes) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-      [req.params.tripId, night_number, date, lat_center, lng_center, notes]
+      [params.tripId, night_number, date, lat_center, lng_center, notes]
     )
   );
   res.status(201).json({ night: r.rows[0] });
 });
 
 nightsRouter.post('/:nightNumber/spots', async (req, res) => {
+  const params = req.params as Record<string, string>;
   const { pn_id, lat, lng, title, type_code, rating, reviews, description, role } = req.body;
   const r = await withFamily(req.user.familyId, async (c) => {
     const spotResult = await c.query(
@@ -50,7 +53,7 @@ nightsRouter.post('/:nightNumber/spots', async (req, res) => {
     const spot = spotResult.rows[0];
     const night = await c.query(
       'SELECT id FROM nights WHERE trip_id=$1 AND night_number=$2',
-      [req.params.tripId, req.params.nightNumber]
+      [params.tripId, params.nightNumber]
     );
     if (!night.rows[0]) throw Object.assign(new Error('Night not found'), { status: 404 });
     const ns = await c.query(
