@@ -4,6 +4,7 @@ import http from 'http';
 import { authRouter } from './auth/router';
 import { tripsRouter } from './trips/router';
 import { nightsRouter } from './nights/router';
+import { pnRouter } from './pn/router';
 
 export const app = express();
 app.use(express.json());
@@ -15,6 +16,7 @@ app.get('/health', (_req, res) => {
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/trips', tripsRouter);
 app.use('/api/v1/trips/:tripId/nights', nightsRouter);
+app.use('/api/v1/pn', pnRouter);
 
 export const server = http.createServer(app);
 
