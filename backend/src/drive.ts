@@ -27,7 +27,8 @@ export async function uploadToDrive(
     fields: 'id, webViewLink',
   });
 
-  const fileId = res.data.id!;
+  const fileId = res.data.id;
+  if (!fileId) throw new Error('Drive upload returned no file ID');
   await drive.permissions.create({
     fileId,
     requestBody: { role: 'reader', type: 'anyone' },
@@ -37,4 +38,10 @@ export async function uploadToDrive(
     fileId,
     viewUrl: `https://drive.google.com/uc?id=${fileId}`,
   };
+}
+
+export async function deleteDriveFile(fileId: string): Promise<void> {
+  const auth = getAuth();
+  const drive = google.drive({ version: 'v3', auth });
+  await drive.files.delete({ fileId });
 }

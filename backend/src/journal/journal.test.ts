@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../index';
 import { pool } from '../db';
@@ -8,6 +8,7 @@ vi.mock('../drive', () => ({
     fileId: 'test-file-id',
     viewUrl: 'https://drive.google.com/uc?id=test-file-id',
   }),
+  deleteDriveFile: vi.fn().mockResolvedValue(undefined),
 }));
 
 let token: string;
@@ -16,13 +17,14 @@ let nightId: string;
 let entryId: string;
 
 beforeAll(async () => {
-  // Delete in FK-safe order: journal data + trips first, then users/families
+  // Null out user_id on journal_entries to allow user/family cascade delete,
+  // then cascade delete via families → users/trips → journal_entries → media
   await pool.query(`
-    DELETE FROM trips WHERE created_by IN (
-      SELECT id FROM users WHERE email = 'journaltest@test-reise.de'
-    )
+    UPDATE journal_entries SET user_id = NULL
+    WHERE user_id IN (SELECT id FROM users WHERE email = 'journaltest@test-reise.de')
   `);
   await pool.query("DELETE FROM families WHERE name = 'JournalTestFam'");
+
   const reg = await request(app).post('/api/v1/auth/register').send({
     email: 'journaltest@test-reise.de',
     password: 'pw',
@@ -42,18 +44,35 @@ beforeAll(async () => {
     .set('Authorization', `Bearer ${token}`)
     .send({ night_number: 1, date: '2026-06-06', lat_center: 54.1, lng_center: 22.5 });
   nightId = n.body.night.id;
+
+  // Create the journal entry here so entryId is available for all tests
+  const e = await request(app)
+    .post(`/api/v1/trips/${tripId}/journal`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ text: 'Toller Tag!', night_id: nightId });
+  entryId = e.body.entry.id;
+});
+
+afterAll(async () => {
+  await pool.query(`
+    UPDATE journal_entries SET user_id = NULL
+    WHERE user_id IN (SELECT id FROM users WHERE email = 'journaltest@test-reise.de')
+  `);
+  await pool.query("DELETE FROM families WHERE name = 'JournalTestFam'");
 });
 
 describe('Journal entries CRUD', () => {
   it('POST /api/v1/trips/:tripId/journal — creates entry, returns 201', async () => {
+    // Entry already created in beforeAll; verify it exists
+    expect(entryId).toBeTruthy();
+
     const res = await request(app)
       .post(`/api/v1/trips/${tripId}/journal`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ text: 'Toller Tag!', night_id: nightId });
+      .send({ text: 'Zweiter Eintrag', night_id: nightId });
     expect(res.status).toBe(201);
-    expect(res.body.entry.text).toBe('Toller Tag!');
+    expect(res.body.entry.text).toBe('Zweiter Eintrag');
     expect(res.body.entry.trip_id).toBe(tripId);
-    entryId = res.body.entry.id;
   });
 
   it('GET /api/v1/trips/:tripId/journal — returns entries array with media[]', async () => {
@@ -81,6 +100,15 @@ describe('Journal entries CRUD', () => {
     const res = await request(app)
       .post(`/api/v1/trips/${tripId}/journal/${entryId}/media`)
       .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('No file');
+  });
+
+  it('POST /api/v1/trips/:tripId/journal/:entryId/media — returns 400 for disallowed file type', async () => {
+    const res = await request(app)
+      .post(`/api/v1/trips/${tripId}/journal/${entryId}/media`)
+      .set('Authorization', `Bearer ${token}`)
+      .attach('photo', Buffer.from('fake-data'), { filename: 'test.txt', contentType: 'text/plain' });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('No file');
   });
