@@ -52,4 +52,12 @@ describe('Nights CRUD', () => {
     expect(res.status).toBe(200);
     expect(res.body.night_spot.is_selected).toBe(true);
   });
+
+  it('GET nights — each night includes sights array', async () => {
+    const res = await request(app)
+      .get(`/api/v1/trips/${tripId}/nights`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.nights[0].sights)).toBe(true);
+  });
 });

@@ -21,6 +21,11 @@ nightsRouter.get('/', async (req, res) => {
         [night.id]
       );
       night.spots = spots.rows;
+      const sightsResult = await c.query(
+        'SELECT * FROM sights WHERE night_id = $1 ORDER BY id',
+        [night.id]
+      );
+      night.sights = sightsResult.rows;
     }
     return nights;
   });

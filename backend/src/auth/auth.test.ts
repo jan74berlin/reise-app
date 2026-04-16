@@ -4,6 +4,8 @@ import { app } from '../index';
 import { pool } from '../db';
 
 beforeAll(async () => {
+  // Delete trips first (created_by FK blocks user deletion), then families cascade users
+  await pool.query("DELETE FROM trips WHERE created_by IN (SELECT id FROM users WHERE email LIKE '%@test-reise.de')");
   await pool.query("DELETE FROM families WHERE name IN ('Testfamilie','Testfamilie2','Familie2','TripTestFam','NightTestFam')");
   await pool.query("DELETE FROM users WHERE email LIKE '%@test-reise.de'");
 });
