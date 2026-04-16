@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import http from 'http';
 import { authRouter } from './auth/router';
+import { tripsRouter } from './trips/router';
 
 export const app = express();
 app.use(express.json());
@@ -11,6 +12,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/trips', tripsRouter);
 
 export const server = http.createServer(app);
 
