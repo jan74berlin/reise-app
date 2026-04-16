@@ -11,8 +11,9 @@ set -e
 cd /var/www/reise
 git pull origin main
 cd backend
-npm ci --omit=dev
+npm ci
 npm run build
+npm prune --omit=dev
 pm2 restart reise-api
 pm2 save
 echo "✓ Deployed successfully"
