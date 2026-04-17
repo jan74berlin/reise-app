@@ -12,7 +12,7 @@ jest.mock('../api/nights');
 import { useQuery } from '@tanstack/react-query';
 import TripDetailScreen from '../app/(app)/trips/[id]/index';
 import { NightCard } from '../components/NightCard';
-import type { Night } from '../api/nights';
+import type { Night } from '@/api/nights';
 
 const mockNight: Night = {
   id: 'n1',
