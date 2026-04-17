@@ -184,7 +184,7 @@ export default function JournalEntryPage() {
                         const media = entry.media.find(m => m.id === id);
                         return media ? (
                           <div key={id} style={{ position: 'relative' }}>
-                            <img src={media.drive_view_url} alt=""
+                            <img src={media.url} alt=""
                               style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 6 }} />
                             <button
                               onClick={async () => {

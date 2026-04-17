@@ -17,8 +17,8 @@ export interface Trip {
 export interface Media {
   id: string;
   journal_entry_id: string;
-  drive_file_id: string;
-  drive_view_url: string;
+  file_path: string;
+  url: string;
   filename: string;
 }
 

@@ -56,9 +56,9 @@ export default function JournalEntryViewPage() {
             {images.map(media => (
               <img
                 key={media.id}
-                src={media.drive_view_url}
+                src={media.url}
                 alt=""
-                onClick={() => setLightbox(media.drive_view_url)}
+                onClick={() => setLightbox(media.url)}
                 style={{ height: 180, objectFit: 'cover', borderRadius: 8, cursor: 'pointer', flex: '1 1 200px', maxWidth: '100%' }}
               />
             ))}

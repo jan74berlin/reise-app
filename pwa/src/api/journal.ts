@@ -34,7 +34,7 @@ export async function uploadMedia(
   tripId: string,
   entryId: string,
   file: File
-): Promise<{ media: { id: string; drive_view_url: string } }> {
+): Promise<{ media: { id: string; url: string } }> {
   const form = new FormData();
   form.append('photo', file);
   return apiFetch(`/api/v1/trips/${tripId}/journal/${entryId}/media`, {

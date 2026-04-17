@@ -35,7 +35,7 @@ export default function PhotoUpload({ tripId, entryId, onUploaded }: Props) {
         const resized = await resizeImage(arr[i]);
         setFiles(s => s.map((x, j) => j === i ? { ...x, progress: 'uploading' } : x));
         const { media } = await uploadMedia(tripId, entryId, resized);
-        onUploaded(media.id, media.drive_view_url);
+        onUploaded(media.id, media.url);
         setFiles(s => s.map((x, j) => j === i ? { ...x, progress: 'done' } : x));
       } catch {
         setFiles(s => s.map((x, j) => j === i ? { ...x, progress: 'error' } : x));

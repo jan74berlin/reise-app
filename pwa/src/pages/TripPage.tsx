@@ -28,9 +28,9 @@ export default function TripPage() {
     const firstImgBlock = entry.blocks?.find(b => b.type === 'images');
     if (firstImgBlock && firstImgBlock.type === 'images' && firstImgBlock.media_ids.length > 0) {
       const media = entry.media.find(m => m.id === firstImgBlock.media_ids[0]);
-      return media?.drive_view_url ?? null;
+      return media?.url ?? null;
     }
-    return entry.media[0]?.drive_view_url ?? null;
+    return entry.media[0]?.url ?? null;
   }
 
   function getPhotoCount(entry: JournalEntry): number {
