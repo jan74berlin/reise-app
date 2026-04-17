@@ -1,19 +1,50 @@
 // mobile/app/(app)/trips/[id]/index.tsx
-import { View, FlatList, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, FlatList, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useNights } from '@/hooks/useNights';
 import { NightCard } from '@/components/NightCard';
+
+const { width } = Dimensions.get('window');
 
 export default function TripDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { data: nights, isLoading, isError } = useNights(id);
 
+  const nightsWithCoords = nights?.filter((n) => n.lat_center && n.lng_center) ?? [];
+  const initialRegion = nightsWithCoords.length > 0 ? {
+    latitude: parseFloat(nightsWithCoords[0].lat_center!),
+    longitude: parseFloat(nightsWithCoords[0].lng_center!),
+    latitudeDelta: 8,
+    longitudeDelta: 8,
+  } : { latitude: 54, longitude: 24, latitudeDelta: 12, longitudeDelta: 12 };
+
   if (isLoading) return <View style={s.center}><ActivityIndicator size="large" testID="loading-indicator" /></View>;
-  if (isError) return <View style={s.center}><Text style={s.errorText}>Etappen konnten nicht geladen werden.</Text></View>;
+  if (isError) return <View style={s.center}><Text style={s.errorText} testID="error-message">Etappen konnten nicht geladen werden.</Text></View>;
 
   return (
     <View style={s.container}>
+      <MapView
+        style={s.map}
+        provider={PROVIDER_GOOGLE}
+        initialRegion={initialRegion}
+        testID="trip-map"
+      >
+        {nightsWithCoords.map((night) => (
+          <Marker
+            key={night.id}
+            coordinate={{
+              latitude: parseFloat(night.lat_center!),
+              longitude: parseFloat(night.lng_center!),
+            }}
+            title={`Nacht ${night.night_number}`}
+            description={night.date ?? undefined}
+            onCalloutPress={() => router.push(`/(app)/trips/${id}/nights/${night.night_number}`)}
+          />
+        ))}
+      </MapView>
+
       <View style={s.actions}>
         <TouchableOpacity style={s.actionBtn} onPress={() => router.push(`/(app)/trips/${id}/journal`)}>
           <Text style={s.actionText}>📓 Tagebuch</Text>
@@ -22,6 +53,7 @@ export default function TripDetailScreen() {
           <Text style={s.actionText}>✅ Checkliste</Text>
         </TouchableOpacity>
       </View>
+
       <FlatList
         data={nights}
         keyExtractor={(n) => n.id}
@@ -40,6 +72,7 @@ export default function TripDetailScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f3f4f6' },
+  map: { width, height: 220 },
   list: { padding: 16 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { textAlign: 'center', color: '#9ca3af', marginTop: 48 },

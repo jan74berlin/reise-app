@@ -17,7 +17,12 @@
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION"
-      ]
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "GOOGLE_MAPS_API_KEY_REQUIRED"
+        }
+      }
     },
     "web": {
       "bundler": "metro"
@@ -40,7 +45,7 @@
       [
         "react-native-maps",
         {
-          "googleMapsApiKey": "PLACEHOLDER_KEY"
+          "googleMapsApiKey": "GOOGLE_MAPS_API_KEY_REQUIRED"
         }
       ]
     ]
