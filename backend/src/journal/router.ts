@@ -44,7 +44,7 @@ journalRouter.post('/', async (req, res) => {
     const r = await withFamily(req.user.familyId, (c) =>
       c.query(
         'INSERT INTO journal_entries (trip_id, night_id, user_id, text, blocks) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-        [params.tripId, night_id ?? null, req.user.userId, text ?? null, blocks ? JSON.stringify(blocks) : null]
+        [params.tripId, night_id ?? null, req.user.userId, text ?? null, blocks ?? null]
       )
     );
     res.status(201).json({ entry: r.rows[0] });
@@ -65,7 +65,7 @@ journalRouter.put('/:entryId', async (req, res) => {
              updated_at = now()
          WHERE id = $3 AND trip_id = $4
          RETURNING *`,
-        [text ?? null, blocks ? JSON.stringify(blocks) : null, params.entryId, params.tripId]
+        [text ?? null, blocks ?? null, params.entryId, params.tripId]
       )
     );
     if (r.rows.length === 0) { res.status(404).json({ error: 'Not found' }); return; }
@@ -78,12 +78,13 @@ journalRouter.put('/:entryId', async (req, res) => {
 journalRouter.delete('/:entryId', async (req, res) => {
   const params = req.params as Record<string, string>;
   try {
-    await withFamily(req.user.familyId, (c) =>
+    const r = await withFamily(req.user.familyId, (c) =>
       c.query(
-        'DELETE FROM journal_entries WHERE id = $1 AND trip_id = $2',
+        'DELETE FROM journal_entries WHERE id = $1 AND trip_id = $2 RETURNING id',
         [params.entryId, params.tripId]
       )
     );
+    if (r.rowCount === 0) { res.status(404).json({ error: 'Not found' }); return; }
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: 'Internal server error' });
@@ -95,12 +96,12 @@ journalRouter.delete('/:entryId/media/:mediaId', async (req, res) => {
   try {
     await withFamily(req.user.familyId, async (c) => {
       const m = await c.query(
-        'SELECT drive_file_id FROM media WHERE id = $1 AND journal_entry_id = $2',
+        'DELETE FROM media WHERE id = $1 AND journal_entry_id = $2 RETURNING drive_file_id',
         [params.mediaId, params.entryId]
       );
-      if (m.rows.length === 0) return;
-      await deleteDriveFile(m.rows[0].drive_file_id);
-      await c.query('DELETE FROM media WHERE id = $1', [params.mediaId]);
+      if (m.rowCount === 0) return;
+      // DB row gone — delete file best-effort (orphan on filesystem is harmless)
+      await deleteDriveFile(m.rows[0].drive_file_id).catch(() => {});
     });
     res.status(204).send();
   } catch (err) {
