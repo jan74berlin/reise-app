@@ -6,10 +6,18 @@ import { TripCard } from '@/components/TripCard';
 
 export default function TripsScreen() {
   const router = useRouter();
-  const { data: trips, isLoading, refetch, isRefetching } = useTrips();
+  const { data: trips, isLoading, isError, refetch, isRefetching } = useTrips();
 
   if (isLoading) {
     return <View style={s.center}><ActivityIndicator testID="loading-indicator" size="large" /></View>;
+  }
+
+  if (isError) {
+    return (
+      <View style={s.center}>
+        <Text style={s.errorText} testID="error-message">Reisen konnten nicht geladen werden.</Text>
+      </View>
+    );
   }
 
   return (
@@ -36,4 +44,5 @@ const s = StyleSheet.create({
   list: { padding: 16 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { textAlign: 'center', color: '#9ca3af', marginTop: 48 },
+  errorText: { color: '#dc2626', textAlign: 'center', paddingHorizontal: 24 },
 });

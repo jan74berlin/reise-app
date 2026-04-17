@@ -26,21 +26,27 @@ const mockTrip = {
 };
 
 test('TripsScreen shows ActivityIndicator when loading', () => {
-  (useQuery as jest.Mock).mockReturnValue({ isLoading: true, data: undefined, refetch: jest.fn(), isRefetching: false });
+  (useQuery as jest.Mock).mockReturnValue({ isLoading: true, data: undefined, refetch: jest.fn(), isRefetching: false, isError: false });
   const { getByTestId } = render(<TripsScreen />);
   expect(getByTestId('loading-indicator')).toBeTruthy();
 });
 
 test('TripsScreen renders TripCard for each trip', async () => {
-  (useQuery as jest.Mock).mockReturnValue({ isLoading: false, data: [mockTrip], refetch: jest.fn(), isRefetching: false });
+  (useQuery as jest.Mock).mockReturnValue({ isLoading: false, data: [mockTrip], refetch: jest.fn(), isRefetching: false, isError: false });
   const { getByText } = render(<TripsScreen />);
   await waitFor(() => expect(getByText('Baltikum 2026')).toBeTruthy());
 });
 
 test('TripsScreen shows empty message when no trips', () => {
-  (useQuery as jest.Mock).mockReturnValue({ isLoading: false, data: [], refetch: jest.fn(), isRefetching: false });
+  (useQuery as jest.Mock).mockReturnValue({ isLoading: false, data: [], refetch: jest.fn(), isRefetching: false, isError: false });
   const { getByText } = render(<TripsScreen />);
   expect(getByText('Keine Reisen vorhanden.')).toBeTruthy();
+});
+
+test('TripsScreen shows error message on query failure', () => {
+  (useQuery as jest.Mock).mockReturnValue({ isLoading: false, isError: true, data: undefined, refetch: jest.fn(), isRefetching: false });
+  const { getByTestId } = render(<TripsScreen />);
+  expect(getByTestId('error-message')).toBeTruthy();
 });
 
 test('TripCard renders title and dates', () => {
