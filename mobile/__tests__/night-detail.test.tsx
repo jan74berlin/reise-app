@@ -46,10 +46,12 @@ beforeEach(() => {
   (useMutation as jest.Mock).mockReturnValue({ mutate: jest.fn(), isPending: false });
 });
 
-test('NightDetailScreen shows loading indicator', () => {
+test('NightDetailScreen shows loading indicator', async () => {
   (useQuery as jest.Mock).mockReturnValue({ isLoading: true, data: undefined });
   const { getByTestId } = render(<NightDetailScreen />);
   expect(getByTestId('loading-indicator')).toBeTruthy();
+  // flush any pending async state updates from GPS effect
+  await waitFor(() => {});
 });
 
 test('NightDetailScreen renders night heading and spots', async () => {
@@ -67,10 +69,12 @@ test('NightDetailScreen renders sights', async () => {
   await waitFor(() => expect(getByText('Vilnius Old Town')).toBeTruthy());
 });
 
-test('NightDetailScreen shows not-found when night missing', () => {
+test('NightDetailScreen shows not-found when night missing', async () => {
   (useQuery as jest.Mock).mockReturnValue({ isLoading: false, data: [] });
   const { getByText } = render(<NightDetailScreen />);
   expect(getByText('Nacht nicht gefunden')).toBeTruthy();
+  // flush any pending async state updates from GPS effect
+  await waitFor(() => {});
 });
 
 test('SpotCard renders role label and coordinates', () => {
