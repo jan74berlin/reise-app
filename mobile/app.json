@@ -41,12 +41,6 @@
         {
           "photosPermission": "Wird für das Reisetagebuch benötigt."
         }
-      ],
-      [
-        "react-native-maps",
-        {
-          "googleMapsApiKey": "AIzaSyAwA180PBtc-nDtCf59LTRiZjD5AZU98wE"
-        }
       ]
     ]
   }
