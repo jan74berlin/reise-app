@@ -1,6 +1,8 @@
 // mobile/app/(auth)/login.tsx
 import React, { useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   View,
   Text,
@@ -41,47 +43,52 @@ export default function LoginScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.inner}>
-        <Text style={styles.title}>Anmelden</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.inner}>
+          <Text style={styles.title}>Anmelden</Text>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <TextInput
-          testID="email-input"
-          style={styles.input}
-          placeholder="E-Mail"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
-          testID="password-input"
-          style={styles.input}
-          placeholder="Passwort"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+          <TextInput
+            testID="email-input"
+            style={styles.input}
+            placeholder="E-Mail"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <TextInput
+            testID="password-input"
+            style={styles.input}
+            placeholder="Passwort"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
 
-        <TouchableOpacity
-          testID="submit-button"
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>Anmelden</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            testID="submit-button"
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>Anmelden</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-          <Text style={styles.link}>Registrieren</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('/(auth)/join')}>
-          <Text style={styles.link}>Mit Code beitreten</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+            <Text style={styles.link}>Registrieren</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/(auth)/join')}>
+            <Text style={styles.link}>Mit Code beitreten</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

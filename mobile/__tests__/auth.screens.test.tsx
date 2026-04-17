@@ -10,17 +10,20 @@ jest.mock('../api/auth');
 
 const mockSetAuth = jest.fn();
 jest.mock('../stores/authStore', () => ({
-  useAuthStore: () => ({ setAuth: mockSetAuth }),
+  useAuthStore: jest.fn(() => ({ setAuth: mockSetAuth })),
 }));
+import { useAuthStore } from '../stores/authStore';
 
-import { login } from '../api/auth';
+import { login, register, join } from '../api/auth';
 import LoginScreen from '../app/(auth)/login';
 import RegisterScreen from '../app/(auth)/register';
+import JoinScreen from '../app/(auth)/join';
 
 const mockPush = jest.fn();
 beforeEach(() => {
   jest.clearAllMocks();
   (useRouter as jest.Mock).mockReturnValue({ push: mockPush });
+  (useAuthStore as jest.Mock).mockReturnValue({ setAuth: mockSetAuth });
 });
 
 // Test 1: Login screen renders email and password inputs
@@ -44,8 +47,6 @@ test('Login screen calls login() and setAuth() on submit with valid credentials'
 
   await waitFor(() => {
     expect(login).toHaveBeenCalledWith('a@b.com', 'secret');
-  });
-  await waitFor(() => {
     expect(mockSetAuth).toHaveBeenCalledWith(fakeToken, fakeUser);
   });
 });
@@ -72,4 +73,63 @@ test('Register screen renders all 4 fields', () => {
   expect(getByTestId('password-input')).toBeTruthy();
   expect(getByTestId('display-name-input')).toBeTruthy();
   expect(getByTestId('family-name-input')).toBeTruthy();
+});
+
+// --- Register tests ---
+test('Register screen calls register() and setAuth() on submit', async () => {
+  const mockRegister = register as jest.Mock;
+  const mockSetAuthFn = jest.fn();
+  (useAuthStore as jest.Mock).mockReturnValue({ setAuth: mockSetAuthFn });
+  mockRegister.mockResolvedValue({ token: 'tok2', user: { email: 'new@example.com' }, family: {} });
+
+  const { getByTestId } = render(<RegisterScreen />);
+  fireEvent.changeText(getByTestId('email-input'), 'new@example.com');
+  fireEvent.changeText(getByTestId('password-input'), 'pass');
+  fireEvent.changeText(getByTestId('display-name-input'), 'New User');
+  fireEvent.changeText(getByTestId('family-name-input'), 'My Family');
+  fireEvent.press(getByTestId('submit-button'));
+
+  await waitFor(() => {
+    expect(mockRegister).toHaveBeenCalledWith('new@example.com', 'pass', 'New User', 'My Family');
+    expect(mockSetAuthFn).toHaveBeenCalledWith('tok2', expect.objectContaining({ email: 'new@example.com' }));
+  });
+});
+
+test('Register screen shows error on ApiError', async () => {
+  const mockRegister = register as jest.Mock;
+  mockRegister.mockRejectedValue(new ApiError(400, 'Email already in use'));
+
+  const { getByTestId, findByText } = render(<RegisterScreen />);
+  fireEvent.changeText(getByTestId('email-input'), 'dup@example.com');
+  fireEvent.press(getByTestId('submit-button'));
+
+  await findByText('Email already in use');
+});
+
+// --- Join tests ---
+test('Join screen renders invite_code, email, password, display_name inputs', () => {
+  const { getByTestId } = render(<JoinScreen />);
+  expect(getByTestId('invite-code-input')).toBeTruthy();
+  expect(getByTestId('email-input')).toBeTruthy();
+  expect(getByTestId('password-input')).toBeTruthy();
+  expect(getByTestId('display-name-input')).toBeTruthy();
+});
+
+test('Join screen calls join() and setAuth() on submit', async () => {
+  const mockJoin = join as jest.Mock;
+  const mockSetAuthFn = jest.fn();
+  (useAuthStore as jest.Mock).mockReturnValue({ setAuth: mockSetAuthFn });
+  mockJoin.mockResolvedValue({ token: 'tok3', user: { email: 'j@example.com' }, family: {} });
+
+  const { getByTestId } = render(<JoinScreen />);
+  fireEvent.changeText(getByTestId('invite-code-input'), 'CODE123');
+  fireEvent.changeText(getByTestId('email-input'), 'j@example.com');
+  fireEvent.changeText(getByTestId('password-input'), 'pw');
+  fireEvent.changeText(getByTestId('display-name-input'), 'Joiner');
+  fireEvent.press(getByTestId('submit-button'));
+
+  await waitFor(() => {
+    expect(mockJoin).toHaveBeenCalledWith('CODE123', 'j@example.com', 'pw', 'Joiner');
+    expect(mockSetAuthFn).toHaveBeenCalledWith('tok3', expect.objectContaining({ email: 'j@example.com' }));
+  });
 });

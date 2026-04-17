@@ -1,6 +1,8 @@
 // mobile/app/(auth)/join.tsx
 import React, { useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   View,
   Text,
@@ -42,58 +44,64 @@ export default function JoinScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.inner}>
-        <Text style={styles.title}>Familie beitreten</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.inner}>
+          <Text style={styles.title}>Familie beitreten</Text>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <TextInput
-          testID="invite-code-input"
-          style={styles.input}
-          placeholder="Einladungscode"
-          autoCapitalize="characters"
-          value={inviteCode}
-          onChangeText={setInviteCode}
-        />
-        <TextInput
-          testID="email-input"
-          style={styles.input}
-          placeholder="E-Mail"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
-          testID="password-input"
-          style={styles.input}
-          placeholder="Passwort"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-        <TextInput
-          testID="display-name-input"
-          style={styles.input}
-          placeholder="Dein Name"
-          value={displayName}
-          onChangeText={setDisplayName}
-        />
+          <TextInput
+            testID="invite-code-input"
+            style={styles.input}
+            placeholder="Einladungscode"
+            autoCapitalize="characters"
+            value={inviteCode}
+            onChangeText={setInviteCode}
+          />
+          <TextInput
+            testID="email-input"
+            style={styles.input}
+            placeholder="E-Mail"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <TextInput
+            testID="password-input"
+            style={styles.input}
+            placeholder="Passwort"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TextInput
+            testID="display-name-input"
+            style={styles.input}
+            placeholder="Dein Name"
+            value={displayName}
+            onChangeText={setDisplayName}
+          />
 
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>Beitreten</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            testID="submit-button"
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>Beitreten</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-          <Text style={styles.link}>Anmelden</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
+            <Text style={styles.link}>Anmelden</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
