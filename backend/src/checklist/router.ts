@@ -28,6 +28,8 @@ checklistRouter.post('/', async (req, res) => {
 
 checklistRouter.put('/:itemId', async (req, res) => {
   const { is_checked, text, category } = req.body;
+  // Note: is_checked and text/category are mutually exclusive in a single request.
+  // If both are provided, is_checked takes precedence.
   const r = await withFamily(req.user.familyId, async (c) => {
     if (is_checked !== undefined) {
       if (is_checked) {

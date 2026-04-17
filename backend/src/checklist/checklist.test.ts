@@ -8,11 +8,7 @@ let token: string;
 let tripId: string;
 
 beforeAll(async () => {
-  try {
-    await pool.query('DELETE FROM families WHERE name = $1', ['CheckTest']);
-  } catch (e) {
-    // table might not exist yet, continue
-  }
+  await pool.query('DELETE FROM families WHERE name = $1', ['CheckTest']);
   const f = await pool.query(
     "INSERT INTO families (name, invite_code) VALUES ('CheckTest','CHKTST01') RETURNING id"
   );
