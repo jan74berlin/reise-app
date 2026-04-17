@@ -39,12 +39,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   hydrate: async () => {
-    const token = await SecureStore.getItemAsync(TOKEN_KEY);
-    const userStr = await SecureStore.getItemAsync(USER_KEY);
-    const user = userStr ? JSON.parse(userStr) : null;
-    set({ token, user, hydrated: true });
+    try {
+      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+      const userStr = await SecureStore.getItemAsync(USER_KEY);
+      const user = userStr ? JSON.parse(userStr) : null;
+      set({ token, user, hydrated: true });
+    } catch {
+      // Corrupted storage — start fresh
+      set({ token: null, user: null, hydrated: true });
+    }
   },
 }));
-
-// Hydrate on module load
-useAuthStore.getState().hydrate();

@@ -27,6 +27,10 @@ function AuthGuard() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    useAuthStore.getState().hydrate();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthGuard />
