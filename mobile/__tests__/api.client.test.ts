@@ -32,11 +32,8 @@ test('ApiError has status and message', async () => {
     status: 404,
     json: () => Promise.resolve({ error: 'Not found' }),
   });
-  try {
-    await apiFetch('/trips/x', {});
-  } catch (e) {
-    expect(e).toBeInstanceOf(ApiError);
-    expect((e as ApiError).status).toBe(404);
-    expect((e as ApiError).message).toBe('Not found');
-  }
+  await expect(apiFetch('/trips/x', {})).rejects.toMatchObject({
+    status: 404,
+    message: 'Not found',
+  });
 });

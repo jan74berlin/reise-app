@@ -22,7 +22,7 @@ export async function apiFetch<T = unknown>(
 ): Promise<T> {
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  if (!isMultipart) headers['Content-Type'] = 'application/json';
+  if (!isMultipart && body !== undefined) headers['Content-Type'] = 'application/json';
 
   const res = await fetch(`${API_BASE}${path}`, {
     method,
@@ -30,7 +30,12 @@ export async function apiFetch<T = unknown>(
     body: isMultipart ? formData : body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  const data = await res.json();
-  if (!res.ok) throw new ApiError(res.status, data?.error ?? `HTTP ${res.status}`);
+  let data: Record<string, unknown> | undefined;
+  try {
+    data = await res.json();
+  } catch {
+    // Non-JSON body (proxy error, network-level response, etc.)
+  }
+  if (!res.ok) throw new ApiError(res.status, (data as any)?.error ?? `HTTP ${res.status}`);
   return data as T;
 }
