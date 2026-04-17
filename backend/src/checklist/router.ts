@@ -30,14 +30,17 @@ checklistRouter.put('/:itemId', async (req, res) => {
   const { is_checked, text, category } = req.body;
   const r = await withFamily(req.user.familyId, async (c) => {
     if (is_checked !== undefined) {
-      return c.query(
-        `UPDATE checklist_items SET
-           is_checked = $2,
-           checked_by = CASE WHEN $2 THEN $3 ELSE NULL END,
-           checked_at = CASE WHEN $2 THEN now() ELSE NULL END
-         WHERE id = $1 RETURNING *`,
-        [req.params.itemId, is_checked, req.user.userId]
-      );
+      if (is_checked) {
+        return c.query(
+          `UPDATE checklist_items SET is_checked = true, checked_by = $2, checked_at = now() WHERE id = $1 RETURNING *`,
+          [req.params.itemId, req.user.userId]
+        );
+      } else {
+        return c.query(
+          `UPDATE checklist_items SET is_checked = false, checked_by = NULL, checked_at = NULL WHERE id = $1 RETURNING *`,
+          [req.params.itemId]
+        );
+      }
     }
     return c.query(
       `UPDATE checklist_items SET
