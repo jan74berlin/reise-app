@@ -1,0 +1,39 @@
+export interface User {
+  id: string;
+  email: string;
+  display_name: string;
+  role: 'owner' | 'member';
+  family_id: string;
+}
+
+export interface Trip {
+  id: string;
+  title: string;
+  description?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface Media {
+  id: string;
+  journal_entry_id: string;
+  drive_file_id: string;
+  drive_view_url: string;
+  filename: string;
+}
+
+export type Block =
+  | { type: 'text'; content: string }
+  | { type: 'images'; media_ids: string[] };
+
+export interface JournalEntry {
+  id: string;
+  trip_id: string;
+  night_id?: string;
+  user_id: string;
+  text?: string;
+  blocks?: Block[];
+  created_at: string;
+  updated_at: string;
+  media: Media[];
+}
