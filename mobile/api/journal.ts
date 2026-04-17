@@ -3,8 +3,8 @@ import { apiFetch } from './client';
 
 export interface MediaItem {
   id: string;
-  drive_file_id: string;
-  drive_view_url: string;
+  file_path: string;
+  url: string;
   filename: string;
   caption: string | null;
   taken_at: string | null;

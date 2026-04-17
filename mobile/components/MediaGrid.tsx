@@ -16,8 +16,8 @@ export function MediaGrid({ media }: Props) {
     <>
       <View style={s.grid}>
         {media.map((m) => (
-          <TouchableOpacity key={m.id} onPress={() => setPreview(m.drive_view_url)} testID={`thumb-${m.id}`}>
-            <Image source={{ uri: m.drive_view_url }} style={s.thumb} />
+          <TouchableOpacity key={m.id} onPress={() => setPreview(m.url)} testID={`thumb-${m.id}`}>
+            <Image source={{ uri: m.url }} style={s.thumb} />
           </TouchableOpacity>
         ))}
       </View>
