@@ -78,13 +78,22 @@ journalRouter.put('/:entryId', async (req, res) => {
 journalRouter.delete('/:entryId', async (req, res) => {
   const params = req.params as Record<string, string>;
   try {
-    const r = await withFamily(req.user.familyId, (c) =>
-      c.query(
+    const r = await withFamily(req.user.familyId, async (c) => {
+      const media = await c.query(
+        'SELECT file_path FROM media WHERE journal_entry_id = $1',
+        [params.entryId]
+      );
+      const del = await c.query(
         'DELETE FROM journal_entries WHERE id = $1 AND trip_id = $2 RETURNING id',
         [params.entryId, params.tripId]
-      )
-    );
-    if (r.rowCount === 0) { res.status(404).json({ error: 'Not found' }); return; }
+      );
+      if (del.rowCount === 0) return null;
+      for (const row of media.rows) {
+        await deleteFromStrato(row.file_path).catch(() => {});
+      }
+      return del;
+    });
+    if (!r || r.rowCount === 0) { res.status(404).json({ error: 'Not found' }); return; }
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: 'Internal server error' });
