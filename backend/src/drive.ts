@@ -1,12 +1,21 @@
-import { google } from 'googleapis';
-import { Readable } from 'stream';
+import fs from 'fs';
+import path from 'path';
+import { randomUUID } from 'crypto';
 
-function getAuth() {
-  const json = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON ?? '{}');
-  return new google.auth.GoogleAuth({
-    credentials: json,
-    scopes: ['https://www.googleapis.com/auth/drive.file'],
-  });
+// Local filesystem storage (replaces Google Drive for personal self-hosted setup).
+// Files are stored in UPLOADS_DIR and served via /uploads static route.
+// UPLOADS_DIR defaults to <project-root>/uploads, override with UPLOADS_DIR env var.
+
+function getUploadsDir(): string {
+  const dir = process.env.UPLOADS_DIR ?? path.join(__dirname, '..', 'uploads');
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+function getBaseUrl(): string {
+  return (process.env.API_BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 }
 
 export async function uploadToDrive(
@@ -14,34 +23,28 @@ export async function uploadToDrive(
   mimeType: string,
   buffer: Buffer
 ): Promise<{ fileId: string; viewUrl: string }> {
-  const auth = getAuth();
-  const drive = google.drive({ version: 'v3', auth });
-
-  const stream = Readable.from(buffer);
-  const res = await drive.files.create({
-    requestBody: {
-      name: filename,
-      parents: [process.env.GOOGLE_DRIVE_FOLDER_ID ?? ''],
-    },
-    media: { mimeType, body: stream },
-    fields: 'id, webViewLink',
-  });
-
-  const fileId = res.data.id;
-  if (!fileId) throw new Error('Drive upload returned no file ID');
-  await drive.permissions.create({
-    fileId,
-    requestBody: { role: 'reader', type: 'anyone' },
-  });
-
-  return {
-    fileId,
-    viewUrl: `https://drive.google.com/uc?id=${fileId}`,
-  };
+  const ext = path.extname(filename) || mimeTypeToExt(mimeType);
+  const fileId = `${randomUUID()}${ext}`;
+  const dest = path.join(getUploadsDir(), fileId);
+  fs.writeFileSync(dest, buffer);
+  const viewUrl = `${getBaseUrl()}/uploads/${fileId}`;
+  return { fileId, viewUrl };
 }
 
 export async function deleteDriveFile(fileId: string): Promise<void> {
-  const auth = getAuth();
-  const drive = google.drive({ version: 'v3', auth });
-  await drive.files.delete({ fileId });
+  const dest = path.join(getUploadsDir(), fileId);
+  if (fs.existsSync(dest)) {
+    fs.unlinkSync(dest);
+  }
+}
+
+function mimeTypeToExt(mimeType: string): string {
+  const map: Record<string, string> = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+    'image/heic': '.heic',
+    'video/mp4': '.mp4',
+  };
+  return map[mimeType] ?? '';
 }
