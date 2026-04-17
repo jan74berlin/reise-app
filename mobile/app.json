@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Reise",
+    "slug": "reise-app",
+    "version": "1.0.0",
+    "scheme": "reise",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "bundleIdentifier": "de.toenhardt.reise"
+    },
+    "android": {
+      "package": "de.toenhardt.reise",
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Wird für die Kartenansicht und Stellplatz-Suche verwendet."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Wird für das Reisetagebuch benötigt."
+        }
+      ],
+      [
+        "react-native-maps",
+        {
+          "googleMapsApiKey": "PLACEHOLDER_KEY"
+        }
+      ]
+    ]
+  }
+}
