@@ -8,6 +8,7 @@ import { tripsRouter } from './trips/router';
 import { nightsRouter } from './nights/router';
 import { pnRouter } from './pn/router';
 import { journalRouter } from './journal/router';
+import { checklistRouter } from './checklist/router';
 
 export const app = express();
 app.use(express.json());
@@ -26,6 +27,7 @@ app.use('/api/v1/trips', tripsRouter);
 app.use('/api/v1/trips/:tripId/nights', nightsRouter);
 app.use('/api/v1/pn', pnRouter);
 app.use('/api/v1/trips/:tripId/journal', journalRouter);
+app.use('/api/v1/trips/:tripId/checklist', checklistRouter);
 
 export const server = http.createServer(app);
 
