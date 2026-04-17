@@ -14,7 +14,7 @@ npm run build
 cd ..
 
 echo "→ Syncing dist/ to LXC..."
-rsync -az --delete backend/dist/ root@$SSH_HOST:/var/www/reise/backend/dist/
+tar czf - backend/dist/ | ssh root@$SSH_HOST "cd /var/www/reise && tar xzf - --no-same-owner --overwrite --strip-components=1"
 
 echo "→ Restarting on LXC..."
 ssh root@$SSH_HOST << 'REMOTE'
