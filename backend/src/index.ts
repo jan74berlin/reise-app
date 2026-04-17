@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import cors from 'cors';
 import http from 'http';
 import path from 'path';
 import fs from 'fs';
@@ -11,6 +12,14 @@ import { journalRouter } from './journal/router';
 import { checklistRouter } from './checklist/router';
 
 export const app = express();
+app.use(cors({
+  origin: [
+    'https://tagebuch.jan-toenhardt.de',
+    /^http:\/\/localhost(:\d+)?$/,
+    /^http:\/\/192\.168\./,
+  ],
+  credentials: true,
+}));
 app.use(express.json());
 
 // Serve uploaded media files
