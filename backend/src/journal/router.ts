@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { withFamily } from '../db';
 import { requireAuth } from '../middleware/requireAuth';
-import { uploadToDrive, deleteDriveFile } from '../drive';
+import { uploadToStrato, deleteFromStrato } from '../strato';
 import multer from 'multer';
 
 export const journalRouter = Router({ mergeParams: true });
@@ -96,12 +96,11 @@ journalRouter.delete('/:entryId/media/:mediaId', async (req, res) => {
   try {
     await withFamily(req.user.familyId, async (c) => {
       const m = await c.query(
-        'DELETE FROM media WHERE id = $1 AND journal_entry_id = $2 RETURNING drive_file_id',
+        'DELETE FROM media WHERE id = $1 AND journal_entry_id = $2 RETURNING file_path',
         [params.mediaId, params.entryId]
       );
       if (m.rowCount === 0) return;
-      // DB row gone — delete file best-effort (orphan on filesystem is harmless)
-      await deleteDriveFile(m.rows[0].drive_file_id).catch(() => {});
+      await deleteFromStrato(m.rows[0].file_path).catch(() => {});
     });
     res.status(204).send();
   } catch (err) {
@@ -112,22 +111,25 @@ journalRouter.delete('/:entryId/media/:mediaId', async (req, res) => {
 journalRouter.post('/:entryId/media', upload.single('photo'), async (req, res) => {
   const params = req.params as Record<string, string>;
   if (!req.file) { res.status(400).json({ error: 'No file' }); return; }
-  let fileId: string | undefined;
+  let filePath: string | undefined;
   try {
-    const uploaded = await uploadToDrive(req.file.originalname, req.file.mimetype, req.file.buffer);
-    fileId = uploaded.fileId;
-    const viewUrl = uploaded.viewUrl;
+    const uploaded = await uploadToStrato(
+      params.tripId,
+      req.file.originalname,
+      req.file.buffer,
+      req.file.mimetype
+    );
+    filePath = uploaded.filePath;
     const r = await withFamily(req.user.familyId, (c) =>
       c.query(
-        'INSERT INTO media (journal_entry_id, drive_file_id, drive_view_url, filename) VALUES ($1,$2,$3,$4) RETURNING *',
-        [params.entryId, fileId, viewUrl, req.file!.originalname]
+        'INSERT INTO media (journal_entry_id, file_path, url, filename) VALUES ($1,$2,$3,$4) RETURNING *',
+        [params.entryId, filePath, uploaded.url, req.file!.originalname]
       )
     );
     res.status(201).json({ media: r.rows[0] });
   } catch (err) {
-    if (fileId) {
-      // compensate: delete orphaned Drive file
-      try { await deleteDriveFile(fileId); } catch { /* best-effort */ }
+    if (filePath) {
+      try { await deleteFromStrato(filePath); } catch { /* best-effort */ }
     }
     res.status(500).json({ error: 'Internal server error' });
   }
