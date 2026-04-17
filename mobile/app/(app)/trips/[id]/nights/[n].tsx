@@ -1,5 +1,5 @@
 // mobile/app/(app)/trips/[id]/nights/[n].tsx
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -9,6 +9,9 @@ import { useNights } from '@/hooks/useNights';
 import { SpotCard } from '@/components/SpotCard';
 import { useAuthStore } from '@/stores/authStore';
 import { selectSpot } from '@/api/nights';
+import { PnSearchSheet } from '@/components/PnSearchSheet';
+import { apiFetch } from '@/api/client';
+import type { PnSpot } from '@/api/pn';
 
 export default function NightDetailScreen() {
   const { id: tripId, n } = useLocalSearchParams<{ id: string; n: string }>();
@@ -17,6 +20,7 @@ export default function NightDetailScreen() {
   const qc = useQueryClient();
 
   const [gpsPos, setGpsPos] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [showPnSearch, setShowPnSearch] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -32,6 +36,25 @@ export default function NightDetailScreen() {
   const selectMut = useMutation({
     mutationFn: ({ nightSpotId }: { nightSpotId: string }) =>
       selectSpot(token!, tripId, parseInt(n, 10), nightSpotId, true),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['nights', tripId] }),
+  });
+
+  const addSpotMut = useMutation({
+    mutationFn: ({ spot, role }: { spot: PnSpot; role: string }) =>
+      apiFetch(`/api/v1/trips/${tripId}/nights/${n}/spots`, {
+        token: token!,
+        method: 'POST',
+        body: {
+          pn_id: spot.id,
+          lat: spot.lat,
+          lng: spot.lng,
+          title: spot.title_short,
+          type_code: spot.type?.code,
+          rating: spot.rating,
+          reviews: spot.review,
+          role,
+        },
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['nights', tripId] }),
   });
 
@@ -83,6 +106,13 @@ export default function NightDetailScreen() {
 
       <View style={s.section}>
         <Text style={s.sectionTitle}>Stellplätze</Text>
+        <TouchableOpacity
+          style={s.searchBtn}
+          onPress={() => setShowPnSearch(true)}
+          testID="pn-search-btn"
+        >
+          <Text style={s.searchBtnText}>+ Stellplatz suchen (park4night)</Text>
+        </TouchableOpacity>
         {night.spots.length === 0 ? (
           <Text style={s.empty}>Keine Stellplätze</Text>
         ) : (
@@ -107,6 +137,18 @@ export default function NightDetailScreen() {
           ))}
         </View>
       ) : null}
+      {night.lat_center && night.lng_center && (
+        <PnSearchSheet
+          visible={showPnSearch}
+          lat={parseFloat(night.lat_center)}
+          lng={parseFloat(night.lng_center)}
+          onClose={() => setShowPnSearch(false)}
+          onSelect={(spot, role) => {
+            addSpotMut.mutate({ spot, role });
+            setShowPnSearch(false);
+          }}
+        />
+      )}
     </ScrollView>
   );
 }
@@ -125,4 +167,6 @@ const s = StyleSheet.create({
   sightCard: { backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 8 },
   sightName: { fontSize: 15, fontWeight: '600' },
   sightDesc: { fontSize: 13, color: '#6b7280', marginTop: 2 },
+  searchBtn: { backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#16a34a', borderRadius: 8, padding: 10, alignItems: 'center', marginBottom: 8 },
+  searchBtnText: { color: '#16a34a', fontWeight: '600' },
 });
