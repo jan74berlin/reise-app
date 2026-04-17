@@ -20,7 +20,7 @@
       ],
       "config": {
         "googleMaps": {
-          "apiKey": "GOOGLE_MAPS_API_KEY_REQUIRED"
+          "apiKey": "AIzaSyAwA180PBtc-nDtCf59LTRiZjD5AZU98wE"
         }
       }
     },
@@ -45,7 +45,7 @@
       [
         "react-native-maps",
         {
-          "googleMapsApiKey": "GOOGLE_MAPS_API_KEY_REQUIRED"
+          "googleMapsApiKey": "AIzaSyAwA180PBtc-nDtCf59LTRiZjD5AZU98wE"
         }
       ]
     ]
