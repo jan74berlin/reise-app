@@ -20,7 +20,7 @@ export default function JournalEntryPage() {
   useEffect(() => {
     getEntries(tripId!).then(({ entries }) => {
       const e = entries.find(x => x.id === entryId);
-      if (e) { setEntry(e); setBlocks(e.blocks ?? []); }
+      if (e) { setEntry(e); setBlocks(Array.isArray(e.blocks) ? e.blocks : []); }
     });
   }, [tripId, entryId]);
 

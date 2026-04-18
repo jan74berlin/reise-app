@@ -18,8 +18,9 @@ export default function JournalEntryViewPage() {
 
   if (!entry) return <div style={{ padding: 32 }}>Lade…</div>;
 
-  const blocks: Block[] = entry.blocks?.length
-    ? entry.blocks
+  const entryBlocks = Array.isArray(entry.blocks) ? entry.blocks : [];
+  const blocks: Block[] = entryBlocks.length
+    ? entryBlocks
     : entry.text
     ? [{ type: 'text', content: entry.text }]
     : [];

@@ -45,7 +45,8 @@ export default function TripPage() {
   }
 
   function getThumbnail(entry: JournalEntry): string | null {
-    const firstImgBlock = entry.blocks?.find(b => b.type === 'images');
+    const blocks = Array.isArray(entry.blocks) ? entry.blocks : [];
+    const firstImgBlock = blocks.find(b => b.type === 'images');
     if (firstImgBlock && firstImgBlock.type === 'images' && firstImgBlock.media_ids.length > 0) {
       const media = entry.media.find(m => m.id === firstImgBlock.media_ids[0]);
       return media?.url ?? null;
