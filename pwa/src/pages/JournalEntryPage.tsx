@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Sortable from 'sortablejs';
 import { getEntries, updateEntry, deleteMedia } from '../api/journal';
+import { getTrips } from '../api/trips';
+import { previewEntry, publishEntry, unpublishEntry } from '../api/publish';
 import { useMode } from '../contexts/ModeContext';
 import ModeToggle from '../components/ModeToggle';
 import PhotoUpload from '../components/PhotoUpload';
@@ -15,6 +17,9 @@ export default function JournalEntryPage() {
   const [entry, setEntry] = useState<JournalEntry | null>(null);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [tripSlug, setTripSlug] = useState<string | null>(null);
   const blocksRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -22,6 +27,7 @@ export default function JournalEntryPage() {
       const e = entries.find(x => x.id === entryId);
       if (e) { setEntry(e); setBlocks(Array.isArray(e.blocks) ? e.blocks : []); }
     });
+    getTrips().then(({ trips }) => setTripSlug(trips.find(t => t.id === tripId)?.slug ?? null));
   }, [tripId, entryId]);
 
   // SortableJS nur im Desktop-Modus
@@ -50,6 +56,44 @@ export default function JournalEntryPage() {
       await updateEntry(tripId, entryId, { blocks: blocksToSave ?? blocks });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handlePreview() {
+    if (!entry) return;
+    const { preview } = await previewEntry(tripId!, entry.id);
+    const p = preview as { title: string; date: string; paragraphs: string[]; images: string[] };
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+      body{font-family:sans-serif;max-width:720px;margin:2rem auto;padding:1rem;color:#333}
+      h1{font-size:1.8rem;margin-bottom:.3rem}
+      .date{color:#888;margin-bottom:1.5rem}
+      p{line-height:1.7;margin-bottom:1rem;white-space:pre-wrap}
+      .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.6rem;margin:1rem 0}
+      .gallery img{width:100%;height:160px;object-fit:cover;border-radius:6px}
+    </style></head><body>
+      <h1>${p.title}</h1>
+      <div class="date">${p.date ?? ''}</div>
+      ${p.paragraphs.map(t => `<p>${t.replace(/</g, '&lt;')}</p>`).join('')}
+      ${p.images.length ? `<div class="gallery">${p.images.map(u => `<img src="${u}">`).join('')}</div>` : ''}
+    </body></html>`;
+    setPreviewHtml(html);
+  }
+
+  async function handlePublishToggle() {
+    if (!entry || publishing) return;
+    setPublishing(true);
+    try {
+      if (entry.is_published) {
+        await unpublishEntry(tripId!, entry.id);
+        setEntry({ ...entry, is_published: false });
+      } else {
+        const r = await publishEntry(tripId!, entry.id);
+        setEntry({ ...entry, is_published: true, publish_seq: r.publish_seq, first_published_at: r.first_published_at });
+      }
+    } catch (e) {
+      alert('Fehler: ' + (e instanceof Error ? e.message : 'unbekannt'));
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -165,6 +209,21 @@ export default function JournalEntryPage() {
               style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #ccc', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
               👁 Ansehen
             </button>
+            <button onClick={handlePreview} disabled={publishing}
+              style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #ccc', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
+              👁 Vorschau
+            </button>
+            <button onClick={handlePublishToggle} disabled={publishing}
+              style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: entry.is_published ? '#2a9d4a' : '#e8a838', color: '#fff', cursor: 'pointer', fontSize: 13 }}>
+              {publishing ? '…' : entry.is_published ? '🟢 Online' : '📤 Veröffentlichen'}
+            </button>
+            {tripSlug && entry.is_published && entry.publish_seq && (
+              <a href={`https://xn--tnhardt-90a.de/#${tripSlug}/tag-${entry.publish_seq}`}
+                 target="_blank" rel="noopener noreferrer"
+                 style={{ fontSize: 12, color: '#4a90e2', alignSelf: 'center', marginLeft: 4 }}>
+                Ansehen ↗
+              </a>
+            )}
             <button onClick={() => save()} disabled={saving}
               style={{ padding: '6px 14px', borderRadius: 6, background: '#4a90e2', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13 }}>
               {saving ? 'Speichere…' : '💾 Speichern'}
@@ -234,6 +293,20 @@ export default function JournalEntryPage() {
           <button onClick={addImageBlock} style={addBtnStyle}>+ Fotos</button>
         </div>
       </div>
+
+      {previewHtml && (
+        <div onClick={() => setPreviewHtml(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 8, width: 'min(800px, 100%)', height: 'min(80vh, 90%)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <strong>Vorschau</strong>
+              <button onClick={() => setPreviewHtml(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}>×</button>
+            </div>
+            <iframe srcDoc={previewHtml} style={{ flex: 1, border: 'none', borderRadius: '0 0 8px 8px' }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
