@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getTrips, updateTrip } from '../api/trips';
 import { getEntries, createEntry } from '../api/journal';
+import { publishAll } from '../api/publish';
 import ModeToggle from '../components/ModeToggle';
 import InlineEditText from '../components/InlineEditText';
 import type { Trip, JournalEntry } from '../types';
@@ -19,6 +20,21 @@ export default function TripPage() {
   const [showNewDayForm, setShowNewDayForm] = useState(false);
   const [newDayDate, setNewDayDate] = useState(todayIso());
   const [creating, setCreating] = useState(false);
+  const [publishingAll, setPublishingAll] = useState(false);
+  const publishedCount = entries.filter(e => e.is_published).length;
+
+  async function handlePublishAll() {
+    if (publishingAll || publishedCount === 0) return;
+    setPublishingAll(true);
+    try {
+      const r = await publishAll(tripId!);
+      alert(`${r.republished} Tage aktualisiert.`);
+    } catch (e) {
+      alert('Fehler: ' + (e instanceof Error ? e.message : 'unbekannt'));
+    } finally {
+      setPublishingAll(false);
+    }
+  }
 
   useEffect(() => {
     Promise.all([getTrips(), getEntries(tripId!)]).then(([{ trips }, { entries }]) => {
@@ -81,6 +97,18 @@ export default function TripPage() {
         <div style={{ marginBottom: 20 }}>
           {trip.start_date && (
             <div style={{ fontSize: 13, color: '#888', marginBottom: 6 }}>{formatTripDates(trip)}</div>
+          )}
+          {entries.length > 0 && (
+            <div style={{ fontSize: 12, color: '#666', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>{publishedCount} von {entries.length} Tagen veröffentlicht</span>
+              {publishedCount > 0 && (
+                <button onClick={handlePublishAll} disabled={publishingAll}
+                  title="Übersicht + alle published Tage mit aktuellen Daten neu generieren"
+                  style={{ background: 'none', border: '1px solid #ccc', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontSize: 11 }}>
+                  {publishingAll ? '…' : '🔄 Alle aktualisieren'}
+                </button>
+              )}
+            </div>
           )}
           <InlineEditText
             value={trip.description ?? ''}
