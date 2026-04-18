@@ -141,4 +141,30 @@ describe('Journal entries CRUD', () => {
     expect(upd.status).toBe(200);
     expect(upd.body.entry.date).toBe('2026-06-15');
   });
+
+  it('GET /journal — sorts by date ASC NULLS LAST, then created_at', async () => {
+    const tRes = await request(app)
+      .post('/api/v1/trips')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Sort Trip' });
+    const sortTripId = tRes.body.trip.id;
+
+    async function mk(text: string, date: string | null) {
+      const r = await request(app)
+        .post(`/api/v1/trips/${sortTripId}/journal`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ text, date });
+      return r.body.entry.id;
+    }
+    const idB = await mk('B', '2026-06-10');
+    const idA = await mk('A', '2026-06-05');
+    const idNull = await mk('NULL', null);
+    const idC = await mk('C', '2026-06-15');
+
+    const res = await request(app)
+      .get(`/api/v1/trips/${sortTripId}/journal`)
+      .set('Authorization', `Bearer ${token}`);
+    const ids = res.body.entries.map((e: { id: string }) => e.id);
+    expect(ids).toEqual([idA, idB, idC, idNull]);
+  });
 });

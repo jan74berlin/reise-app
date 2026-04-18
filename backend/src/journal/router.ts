@@ -22,7 +22,7 @@ journalRouter.get('/', async (req, res) => {
   try {
     const r = await withFamily(req.user.familyId, async (c) => {
       const entries = await c.query(
-        'SELECT * FROM journal_entries WHERE trip_id = $1 ORDER BY created_at',
+        'SELECT * FROM journal_entries WHERE trip_id = $1 ORDER BY date ASC NULLS LAST, created_at ASC',
         [params.tripId]
       );
       for (const e of entries.rows) {
