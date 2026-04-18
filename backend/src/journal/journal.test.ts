@@ -126,4 +126,19 @@ describe('Journal entries CRUD', () => {
     expect(res.status).toBe(201);
     expect(res.body.entry.date).toBeNull();
   });
+
+  it('PUT /journal/:id — updates date', async () => {
+    const create = await request(app)
+      .post(`/api/v1/trips/${tripId}/journal`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ text: 'Startdatum', date: '2026-06-01' });
+    const id = create.body.entry.id;
+
+    const upd = await request(app)
+      .put(`/api/v1/trips/${tripId}/journal/${id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ date: '2026-06-15' });
+    expect(upd.status).toBe(200);
+    expect(upd.body.entry.date).toBe('2026-06-15');
+  });
 });

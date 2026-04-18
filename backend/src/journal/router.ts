@@ -55,17 +55,18 @@ journalRouter.post('/', async (req, res) => {
 
 journalRouter.put('/:entryId', async (req, res) => {
   const params = req.params as Record<string, string>;
-  const { text, blocks } = req.body;
+  const { text, blocks, date } = req.body;
   try {
     const r = await withFamily(req.user.familyId, (c) =>
       c.query(
         `UPDATE journal_entries
          SET text = COALESCE($1, text),
              blocks = COALESCE($2::jsonb, blocks),
+             date = COALESCE($3::date, date),
              updated_at = now()
-         WHERE id = $3 AND trip_id = $4
+         WHERE id = $4 AND trip_id = $5
          RETURNING *`,
-        [text ?? null, blocks ?? null, params.entryId, params.tripId]
+        [text ?? null, blocks ?? null, date ?? null, params.entryId, params.tripId]
       )
     );
     if (r.rows.length === 0) { res.status(404).json({ error: 'Not found' }); return; }
