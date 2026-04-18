@@ -32,6 +32,7 @@ describe('buildTagPageEntry', () => {
       'https://xn--tnhardt-90a.de/_entwuerfe/t1/abc.jpg',
       'https://xn--tnhardt-90a.de/_entwuerfe/t1/def.jpg',
     ]);
+    expect(result.value.order).toEqual(['p0', 'i0', 'i1', 'p1']);
   });
 
   it('orders paragraphs and images by block order', () => {
@@ -45,11 +46,12 @@ describe('buildTagPageEntry', () => {
     const result = buildTagPageEntry(sampleTrip as any, entry as any);
     expect(result.value.images).toEqual(['https://xn--tnhardt-90a.de/_entwuerfe/t1/abc.jpg']);
     expect(result.value.paragraphs).toEqual(['Erst Foto, dann Text.']);
+    expect(result.value.order).toEqual(['i0', 'p0']);
   });
 });
 
 describe('buildOverviewPageEntry', () => {
-  it('produces overview JSON entry', () => {
+  it('produces overview JSON entry in legacy PAGES shape', () => {
     const publishedEntries = [
       { ...sampleEntry, publish_seq: 1, date: '2026-06-10' },
       { ...sampleEntry, id: 'e2', publish_seq: 2, date: '2026-06-11', blocks: [{ type: 'text', content: 'Zweiter Tag.' }], media: [] },
@@ -57,11 +59,15 @@ describe('buildOverviewPageEntry', () => {
     const result = buildOverviewPageEntry(sampleTrip as any, publishedEntries as any);
     expect(result.key).toBe('baltikum-2026');
     expect(result.value.title).toBe('Baltikum 2026');
-    expect(result.value.description).toBe('Wohnmobiltour 6.–27. Juni 2026');
+    expect(result.value.paragraphs).toEqual(['Wohnmobiltour 6.–27. Juni 2026']);
+    expect(result.value.images).toEqual([]);
     expect(result.value.start_date).toBe('2026-06-06');
+    expect(result.value.end_date).toBe('2026-06-27');
     expect(result.value.isTripOverview).toBe(true);
-    expect(result.value.days).toHaveLength(2);
-    expect(result.value.days[0]).toMatchObject({ seq: 1, date: '2026-06-10', preview_text: 'Erster Tag in Polen.' });
-    expect(result.value.days[1]).toMatchObject({ seq: 2, date: '2026-06-11' });
+  });
+
+  it('produces empty paragraphs when no description', () => {
+    const result = buildOverviewPageEntry({ ...sampleTrip, description: null } as any, []);
+    expect(result.value.paragraphs).toEqual([]);
   });
 });

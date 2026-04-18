@@ -35,6 +35,7 @@ export interface TagPageEntry {
     date: string | null;
     paragraphs: string[];
     images: string[];
+    order: string[];
     tripSlug: string;
     publishSeq: number;
   };
@@ -44,17 +45,11 @@ export interface OverviewPageEntry {
   key: string;
   value: {
     title: string;
-    description: string | null;
+    paragraphs: string[];
+    images: string[];
+    isTripOverview: true;
     start_date: string | null;
     end_date: string | null;
-    isTripOverview: true;
-    days: Array<{
-      seq: number;
-      date: string | null;
-      title: string;
-      thumbnail: string | null;
-      preview_text: string;
-    }>;
   };
 }
 
@@ -65,13 +60,18 @@ export function buildTagPageEntry(trip: Trip, entry: JournalEntry): TagPageEntry
   const blocks = Array.isArray(entry.blocks) ? entry.blocks : [];
   const paragraphs: string[] = [];
   const images: string[] = [];
+  const order: string[] = [];
   for (const b of blocks) {
     if (b.type === 'text' && b.content) {
+      order.push(`p${paragraphs.length}`);
       paragraphs.push(b.content);
     } else if (b.type === 'images' && b.media_ids) {
       for (const mid of b.media_ids) {
         const m = entry.media.find((x) => x.id === mid);
-        if (m) images.push(m.url);
+        if (m) {
+          order.push(`i${images.length}`);
+          images.push(m.url);
+        }
       }
     }
   }
@@ -83,45 +83,27 @@ export function buildTagPageEntry(trip: Trip, entry: JournalEntry): TagPageEntry
       date: entry.date,
       paragraphs,
       images,
+      order,
       tripSlug: trip.slug,
       publishSeq: entry.publish_seq,
     },
   };
 }
 
-export function buildOverviewPageEntry(trip: Trip, published: JournalEntry[]): OverviewPageEntry {
+export function buildOverviewPageEntry(trip: Trip, _published: JournalEntry[]): OverviewPageEntry {
   if (!trip.slug) throw new Error('trip.slug required');
 
-  const sorted = [...published].sort((a, b) => {
-    const da = a.date ?? '';
-    const db = b.date ?? '';
-    return da.localeCompare(db);
-  });
-
-  const days = sorted.map((e) => {
-    const blocks = Array.isArray(e.blocks) ? e.blocks : [];
-    const firstText = blocks.find((b) => b.type === 'text' && b.content);
-    const firstImgBlock = blocks.find((b) => b.type === 'images' && b.media_ids && b.media_ids.length > 0);
-    const firstImg = firstImgBlock ? e.media.find((m) => m.id === firstImgBlock.media_ids![0]) : null;
-    const preview = firstText?.content ?? '';
-    return {
-      seq: e.publish_seq!,
-      date: e.date,
-      title: `Tag ${e.publish_seq}`,
-      thumbnail: firstImg?.url ?? null,
-      preview_text: preview.slice(0, 160),
-    };
-  });
+  const paragraphs = trip.description ? [trip.description] : [];
 
   return {
     key: trip.slug,
     value: {
       title: trip.title,
-      description: trip.description ?? null,
+      paragraphs,
+      images: [],
+      isTripOverview: true,
       start_date: trip.start_date ?? null,
       end_date: trip.end_date ?? null,
-      isTripOverview: true,
-      days,
     },
   };
 }
