@@ -5,6 +5,7 @@ import { getEntries, updateEntry, deleteMedia } from '../api/journal';
 import { useMode } from '../contexts/ModeContext';
 import ModeToggle from '../components/ModeToggle';
 import PhotoUpload from '../components/PhotoUpload';
+import InlineEditText from '../components/InlineEditText';
 import type { JournalEntry, Block } from '../types';
 
 export default function JournalEntryPage() {
@@ -146,9 +147,18 @@ export default function JournalEntryPage() {
       {/* Editor */}
       <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ margin: 0 }}>
-            {new Date(entry.created_at).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </h2>
+          <div style={{ margin: 0, minWidth: 240 }}>
+            <InlineEditText
+              value={entry.date ?? ''}
+              placeholder="Datum setzen"
+              inputType="date"
+              onSave={async (v) => {
+                const { entry: updated } = await updateEntry(tripId!, entryId!, { date: v });
+                setEntry(updated);
+                if (updated.blocks) setBlocks(updated.blocks);
+              }}
+            />
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <ModeToggle />
             <button onClick={() => navigate(`/trips/${tripId}/journal/${entryId}/view`)}

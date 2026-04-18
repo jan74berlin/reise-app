@@ -30,7 +30,7 @@ export default function JournalEntryViewPage() {
         <button onClick={() => navigate(`/trips/${tripId}`)}
           style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}>←</button>
         <h2 style={{ margin: 0 }}>
-          {new Date(entry.created_at).toLocaleDateString('de-DE', {
+          {new Date(entry.date ?? entry.created_at).toLocaleDateString('de-DE', {
             weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
           })}
         </h2>
