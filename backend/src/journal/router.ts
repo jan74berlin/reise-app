@@ -39,12 +39,12 @@ journalRouter.get('/', async (req, res) => {
 
 journalRouter.post('/', async (req, res) => {
   const params = req.params as Record<string, string>;
-  const { text, night_id, blocks } = req.body;
+  const { text, night_id, blocks, date } = req.body;
   try {
     const r = await withFamily(req.user.familyId, (c) =>
       c.query(
-        'INSERT INTO journal_entries (trip_id, night_id, user_id, text, blocks) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-        [params.tripId, night_id ?? null, req.user.userId, text ?? null, blocks ?? null]
+        'INSERT INTO journal_entries (trip_id, night_id, user_id, text, blocks, date) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+        [params.tripId, night_id ?? null, req.user.userId, text ?? null, blocks ?? null, date ?? null]
       )
     );
     res.status(201).json({ entry: r.rows[0] });

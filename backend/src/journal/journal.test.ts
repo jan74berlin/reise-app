@@ -108,4 +108,22 @@ describe('Journal entries CRUD', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('No file');
   });
+
+  it('POST /journal — persists date field', async () => {
+    const res = await request(app)
+      .post(`/api/v1/trips/${tripId}/journal`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ text: 'Mit Datum', date: '2026-06-10' });
+    expect(res.status).toBe(201);
+    expect(res.body.entry.date).toBe('2026-06-10');
+  });
+
+  it('POST /journal — date can be omitted (null)', async () => {
+    const res = await request(app)
+      .post(`/api/v1/trips/${tripId}/journal`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ text: 'Ohne Datum' });
+    expect(res.status).toBe(201);
+    expect(res.body.entry.date).toBeNull();
+  });
 });
