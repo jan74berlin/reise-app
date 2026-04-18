@@ -7,7 +7,7 @@ export async function getEntries(tripId: string): Promise<{ entries: JournalEntr
 
 export async function createEntry(
   tripId: string,
-  data: { text?: string; blocks?: Block[] }
+  data: { text?: string; blocks?: Block[]; date?: string }
 ): Promise<{ entry: JournalEntry }> {
   return apiFetch(`/api/v1/trips/${tripId}/journal`, {
     method: 'POST',
@@ -18,7 +18,7 @@ export async function createEntry(
 export async function updateEntry(
   tripId: string,
   entryId: string,
-  data: { text?: string; blocks?: Block[] }
+  data: { text?: string; blocks?: Block[]; date?: string }
 ): Promise<{ entry: JournalEntry }> {
   return apiFetch(`/api/v1/trips/${tripId}/journal/${entryId}`, {
     method: 'PUT',

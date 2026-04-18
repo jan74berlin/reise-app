@@ -33,6 +33,7 @@ export interface JournalEntry {
   user_id: string;
   text?: string;
   blocks?: Block[];
+  date?: string;
   created_at: string;
   updated_at: string;
   media: Media[];
