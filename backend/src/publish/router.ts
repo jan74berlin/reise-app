@@ -133,4 +133,41 @@ publishRouter.post('/journal/:entryId/publish', async (req, res) => {
   }
 });
 
+publishRouter.post('/journal/:entryId/unpublish', async (req, res) => {
+  const { tripId, entryId } = req.params as Record<string, string>;
+  try {
+    await withTripLock(tripId, async () => {
+      const { trip, entry } = await loadTripWithEntry(req.user.familyId, tripId, entryId);
+      if (!trip || !entry) { res.status(404).json({ error: 'Not found' }); return; }
+      if (!entry.is_published) {
+        res.json({ is_published: false });
+        return;
+      }
+
+      await ensureRepoCloned();
+      await pullRepo();
+      const pages = await readPagesJson();
+
+      const key = `${trip.slug}/tag-${entry.publish_seq}`;
+      delete pages[key];
+
+      await withFamily(req.user.familyId, (c) =>
+        c.query('UPDATE journal_entries SET is_published = false WHERE id = $1', [entryId])
+      );
+
+      const published = await allPublishedForTrip(req.user.familyId, tripId);
+      const overview = buildOverviewPageEntry(trip, published);
+      pages[overview.key] = overview.value as any;
+
+      await writePagesJson(undefined, pages);
+      await syncPagesJsonToStrato();
+      await commitAndPush(`unpublish: ${key}`);
+
+      res.json({ is_published: false });
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export { loadTrip, loadTripWithEntry };

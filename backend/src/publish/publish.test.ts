@@ -72,3 +72,19 @@ describe('POST /publish', () => {
     expect(res.body.url).toContain('tag-2');
   });
 });
+
+describe('POST /unpublish', () => {
+  it('sets is_published=false, keeps publish_seq', async () => {
+    const e = await request(app).post(`/api/v1/trips/${tripId}/journal`).set('Authorization', `Bearer ${token}`).send({ date: '2026-06-04', blocks: [] });
+    await request(app).post(`/api/v1/trips/${tripId}/journal/${e.body.entry.id}/publish`).set('Authorization', `Bearer ${token}`);
+
+    const unp = await request(app).post(`/api/v1/trips/${tripId}/journal/${e.body.entry.id}/unpublish`).set('Authorization', `Bearer ${token}`);
+    expect(unp.status).toBe(200);
+    expect(unp.body.is_published).toBe(false);
+
+    const check = await request(app).get(`/api/v1/trips/${tripId}/journal`).set('Authorization', `Bearer ${token}`);
+    const ent = check.body.entries.find((x: any) => x.id === e.body.entry.id);
+    expect(ent.is_published).toBe(false);
+    expect(ent.publish_seq).toBeGreaterThan(0);
+  });
+});
