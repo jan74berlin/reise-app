@@ -88,3 +88,11 @@ describe('POST /unpublish', () => {
     expect(ent.publish_seq).toBeGreaterThan(0);
   });
 });
+
+describe('POST /publish-all', () => {
+  it('republishes all already-published entries', async () => {
+    const res = await request(app).post(`/api/v1/trips/${tripId}/publish-all`).set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.republished).toBeGreaterThanOrEqual(1);
+  });
+});

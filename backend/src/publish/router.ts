@@ -170,4 +170,34 @@ publishRouter.post('/journal/:entryId/unpublish', async (req, res) => {
   }
 });
 
+publishRouter.post('/publish-all', async (req, res) => {
+  const { tripId } = req.params as Record<string, string>;
+  try {
+    await withTripLock(tripId, async () => {
+      const trip = await loadTrip(req.user.familyId, tripId);
+      if (!trip) { res.status(404).json({ error: 'Not found' }); return; }
+      if (!trip.slug) { res.json({ republished: 0 }); return; }
+
+      await ensureRepoCloned();
+      await pullRepo();
+      const pages = await readPagesJson();
+
+      const published = await allPublishedForTrip(req.user.familyId, tripId);
+      for (const e of published) {
+        const te = buildTagPageEntry(trip, e);
+        pages[te.key] = te.value as any;
+      }
+      const overview = buildOverviewPageEntry(trip, published);
+      pages[overview.key] = overview.value as any;
+
+      await writePagesJson(undefined, pages);
+      await syncPagesJsonToStrato();
+      await commitAndPush(`publish-all: ${trip.slug} (${published.length} tags)`);
+      res.json({ republished: published.length });
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export { loadTrip, loadTripWithEntry };
