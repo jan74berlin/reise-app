@@ -8,6 +8,7 @@ import { useMode } from '../contexts/ModeContext';
 import ModeToggle from '../components/ModeToggle';
 import PhotoUpload from '../components/PhotoUpload';
 import InlineEditText from '../components/InlineEditText';
+import { normalizeBlocks } from '../utils/normalizeBlocks';
 import type { JournalEntry, Block } from '../types';
 
 export default function JournalEntryPage() {
@@ -25,7 +26,7 @@ export default function JournalEntryPage() {
   useEffect(() => {
     getEntries(tripId!).then(({ entries }) => {
       const e = entries.find(x => x.id === entryId);
-      if (e) { setEntry(e); setBlocks(Array.isArray(e.blocks) ? e.blocks : []); }
+      if (e) { setEntry(e); setBlocks(normalizeBlocks(e)); }
     });
     getTrips().then(({ trips }) => setTripSlug(trips.find(t => t.id === tripId)?.slug ?? null));
   }, [tripId, entryId]);
