@@ -12,6 +12,7 @@ export interface Trip {
   description?: string;
   start_date?: string;
   end_date?: string;
+  slug?: string | null;
 }
 
 export interface Media {
@@ -34,6 +35,9 @@ export interface JournalEntry {
   text?: string;
   blocks?: Block[];
   date?: string;
+  is_published?: boolean;
+  publish_seq?: number | null;
+  first_published_at?: string | null;
   created_at: string;
   updated_at: string;
   media: Media[];
