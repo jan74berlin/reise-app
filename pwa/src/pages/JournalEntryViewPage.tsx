@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getEntries } from '../api/journal';
 import Lightbox from '../components/Lightbox';
+import { normalizeBlocks } from '../utils/normalizeBlocks';
 import type { JournalEntry, Block } from '../types';
 
 export default function JournalEntryViewPage() {
@@ -18,12 +19,7 @@ export default function JournalEntryViewPage() {
 
   if (!entry) return <div style={{ padding: 32 }}>Lade…</div>;
 
-  const entryBlocks = Array.isArray(entry.blocks) ? entry.blocks : [];
-  const blocks: Block[] = entryBlocks.length
-    ? entryBlocks
-    : entry.text
-    ? [{ type: 'text', content: entry.text }]
-    : [];
+  const blocks: Block[] = normalizeBlocks(entry);
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: 20 }}>
