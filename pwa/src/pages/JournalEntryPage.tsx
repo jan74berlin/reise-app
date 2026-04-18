@@ -249,28 +249,21 @@ export default function JournalEntryPage() {
                   />
                 ) : (
                   <div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                      {block.media_ids.map(id => {
-                        const media = entry.media.find(m => m.id === id);
-                        return media ? (
-                          <div key={id} style={{ position: 'relative' }}>
-                            <img src={media.url} alt=""
-                              style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 6 }} />
-                            <button
-                              onClick={async () => {
-                                await deleteMedia(tripId!, entryId!, id);
-                                setBlocks(b => b.map((bl, j) =>
-                                  j !== i || bl.type !== 'images' ? bl
-                                    : { type: 'images', media_ids: bl.media_ids.filter(x => x !== id) }
-                                ));
-                              }}
-                              style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, cursor: 'pointer', fontSize: 10 }}>
-                              ✕
-                            </button>
-                          </div>
-                        ) : null;
-                      })}
-                    </div>
+                    <ImageGrid
+                      blockIndex={i}
+                      mediaIds={block.media_ids}
+                      entry={entry}
+                      onReorder={(ids) => setBlocks(b => b.map((bl, j) =>
+                        j !== i || bl.type !== 'images' ? bl : { type: 'images', media_ids: ids }
+                      ))}
+                      onDelete={async (id) => {
+                        await deleteMedia(tripId!, entryId!, id);
+                        setBlocks(b => b.map((bl, j) =>
+                          j !== i || bl.type !== 'images' ? bl
+                            : { type: 'images', media_ids: bl.media_ids.filter(x => x !== id) }
+                        ));
+                      }}
+                    />
                     <PhotoUpload
                       tripId={tripId!}
                       entryId={entryId!}
@@ -318,3 +311,46 @@ const btnStyle: React.CSSProperties = {
 const addBtnStyle: React.CSSProperties = {
   padding: '8px 16px', borderRadius: 8, border: '1px dashed #aaa', background: '#f9f9f9', cursor: 'pointer', fontSize: 14,
 };
+
+function ImageGrid({ blockIndex, mediaIds, entry, onReorder, onDelete }: {
+  blockIndex: number;
+  mediaIds: string[];
+  entry: JournalEntry;
+  onReorder: (ids: string[]) => void;
+  onDelete: (id: string) => void;
+}) {
+  const gridRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!gridRef.current) return;
+    const s = Sortable.create(gridRef.current, {
+      animation: 150,
+      onEnd: (evt) => {
+        if (evt.oldIndex === undefined || evt.newIndex === undefined || evt.oldIndex === evt.newIndex) return;
+        const next = [...mediaIds];
+        const [moved] = next.splice(evt.oldIndex, 1);
+        next.splice(evt.newIndex, 0, moved);
+        onReorder(next);
+      },
+    });
+    return () => s.destroy();
+  }, [mediaIds, onReorder]);
+  return (
+    <div ref={gridRef} data-block={blockIndex} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+      {mediaIds.map(id => {
+        const media = entry.media.find(m => m.id === id);
+        if (!media) return null;
+        return (
+          <div key={id} data-id={id} style={{ position: 'relative', cursor: 'grab' }}>
+            <img src={media.url} alt="" draggable={false}
+              style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(id); }}
+              style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: 18, height: 18, cursor: 'pointer', fontSize: 10 }}>
+              ✕
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
