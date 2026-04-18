@@ -43,12 +43,13 @@ journalRouter.post('/', async (req, res) => {
   try {
     const r = await withFamily(req.user.familyId, (c) =>
       c.query(
-        'INSERT INTO journal_entries (trip_id, night_id, user_id, text, blocks, date) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-        [params.tripId, night_id ?? null, req.user.userId, text ?? null, blocks ?? null, date ?? null]
+        'INSERT INTO journal_entries (trip_id, night_id, user_id, text, blocks, date) VALUES ($1,$2,$3,$4,$5::jsonb,$6) RETURNING *',
+        [params.tripId, night_id ?? null, req.user.userId, text ?? null, blocks != null ? JSON.stringify(blocks) : null, date ?? null]
       )
     );
     res.status(201).json({ entry: r.rows[0] });
   } catch (err) {
+    console.error('[journal POST]', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -66,12 +67,13 @@ journalRouter.put('/:entryId', async (req, res) => {
              updated_at = now()
          WHERE id = $4 AND trip_id = $5
          RETURNING *`,
-        [text ?? null, blocks ?? null, date ?? null, params.entryId, params.tripId]
+        [text ?? null, blocks != null ? JSON.stringify(blocks) : null, date ?? null, params.entryId, params.tripId]
       )
     );
     if (r.rows.length === 0) { res.status(404).json({ error: 'Not found' }); return; }
     res.json({ entry: r.rows[0] });
   } catch (err) {
+    console.error('[journal PUT]', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
