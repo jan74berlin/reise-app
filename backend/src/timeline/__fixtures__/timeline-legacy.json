@@ -1,0 +1,33 @@
+{
+  "timelineObjects": [
+    {
+      "activitySegment": {
+        "startLocation": { "latitudeE7": 526803000, "longitudeE7": 132900000 },
+        "endLocation": { "latitudeE7": 520000000, "longitudeE7": 85000000 },
+        "duration": {
+          "startTimestamp": "2025-07-19T08:00:00.000Z",
+          "endTimestamp": "2025-07-19T11:30:00.000Z"
+        },
+        "distance": 350000,
+        "activityType": "IN_PASSENGER_VEHICLE",
+        "waypointPath": {
+          "waypoints": [
+            { "latE7": 526803000, "lngE7": 132900000 },
+            { "latE7": 525200000, "lngE7": 134050000 },
+            { "latE7": 522200000, "lngE7": 116300000 },
+            { "latE7": 520000000, "lngE7": 85000000 }
+          ]
+        }
+      }
+    },
+    {
+      "placeVisit": {
+        "location": { "latitudeE7": 520000000, "longitudeE7": 85000000 },
+        "duration": {
+          "startTimestamp": "2025-07-19T11:30:00.000Z",
+          "endTimestamp": "2025-07-19T18:00:00.000Z"
+        }
+      }
+    }
+  ]
+}
