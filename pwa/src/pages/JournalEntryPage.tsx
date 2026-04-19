@@ -331,7 +331,7 @@ function ImageGrid({ blockIndex, mediaIds, entry, onMove, onDelete }: {
       },
     });
     return () => s.destroy();
-  }, []);
+  }, [blockIndex, mediaIds.length]);
   return (
     <div ref={gridRef} data-block={blockIndex} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, minHeight: 60 }}>
       {mediaIds.map(id => {
