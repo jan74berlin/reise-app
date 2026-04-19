@@ -64,15 +64,27 @@ Einmaliger Upload einer Timeline-Export-Datei pro Reise → Backend splittet nac
 
 ### Entscheidung 3: Map-Provider für die Routenbilder
 
-**Optionen:**
-1. **Mapbox Static Images API** — kostenlos für ~50k Anfragen/Monat (Free Tier 2025). Encoded-Polyline-Support. Sieht modern professionell aus. Account-Setup minimal.
-2. **Google Static Maps API** — Look entspricht den bisherigen Screenshots. ~$200 monatliches Free Credit (~100k Anfragen). Erfordert Google-Cloud-Account + Billing aktivieren (wenn auch nur Free Tier genutzt wird).
-3. **staticmap.openstreetmap.de** — komplett kostenlos, kein Account. Begrenzte Polyline-Länge (~ein paar hundert Punkte), schlichter Look.
-4. **Self-hosted** (`staticmaps` npm + OSM Tiles) — komplette Kontrolle, etwas mehr Setup, eigener Tile-Cache.
+**ENTSCHIEDEN am 19.04.2026:** Self-rendered OpenTopoMap (Topo-Look mit Höhenlinien)
 
-**🟡 ANNAHME → 1 (Mapbox)**
-- Begründung: Free Tier reicht weit über erwartbare Nutzung hinaus (wenige Reisen pro Jahr). Polyline-Encoding ist wegen vieler Wegpunkte (Timeline-Daten haben oft >1000 Punkte/Tag) effizienter als Google. Kein Billing-Setup nötig. Optisch konsistent.
-- **Frage an Jan beim Review:** Möchtest du den Google-Look beibehalten (drop-in für die alten manuellen Screenshots) oder ist Mapbox-Look in Ordnung? Falls Google: Wechsel ist trivial (Provider-Abstraktion), aber ein Google-Cloud-Konto muss eingerichtet werden.
+Jan hat in der Vergleichs-Demo den OpenTopoMap-Stil ausgewählt — passt zum Wohnmobil-Reise-Charakter und zeigt Höhenprofil der Route.
+
+**Implementierung:**
+- npm `staticmaps` Library im Backend (rendert Tiles + Polyline + Marker zu PNG)
+- Tile-Source: `https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png`
+- **Wichtig:** OpenTopoMap-Nutzungsbedingungen erfordern Tile-Caching auf Server-Seite und einen `User-Agent`-Header. Plan:
+  - Lokaler Tile-Cache auf LXC 111 (z.B. `/var/cache/opentopomap-tiles/`) mit TTL ~30 Tage
+  - User-Agent: `reise-app/1.0 (https://api.toenhardt.de)`
+  - Bei häufiger Nutzung später ggf. eigenen OpenTopoMap-Stil via TileServer GL self-hosten (out-of-scope für Sub-Projekt 4)
+- Polyline-Style: kräftige Farbe (Vorschlag `#c0392b` rot oder `#2c3e50` dunkelblau, tritt auf Topo-Hintergrund gut hervor)
+- Marker: Start grün, Ende rot (analog Demo)
+- Größe: 800×400 Default
+
+**Verworfene Alternativen:**
+- ~~Mapbox Static Images API~~ — Look ist nicht der Topo-Stil, den Jan wollte. Bleibt als Provider-Adapter-Option im Code, falls später gewünscht
+- ~~Google Static Maps API~~ — kein Topo-Stil, Account-Setup-Hürde
+- ~~staticmap.openstreetmap.de~~ — Polyline-Längen-Limit zu eng
+
+**Architektur-Vorteil:** `map.ts` bleibt als Modul mit Adapter-Interface (`renderRouteImage(daySegments) → Buffer`), sodass der Provider später getauscht werden kann ohne API-Routen oder DB-Schema zu ändern.
 
 ### Entscheidung 4: Static Bild oder interaktive Karte auf toenhardt.de?
 
@@ -149,12 +161,13 @@ Timeline-Daten enthalten DRIVING / IN_PASSENGER_VEHICLE / WALKING / CYCLING / IN
 
 3. `map.ts` — Bild-Generierung
    - `renderRouteImage(daySegments) → Buffer`
-   - Nimmt alle motorisierten Segmente, encoded sie als Polyline (Algorithmus 5-decimal precision)
-   - Vereinfacht Geometrie (Douglas-Peucker o.ä., max ~500 Punkte für Mapbox URL-Limit)
-   - Setzt Start- (grün) und End-Marker (rot) der Tagesroute
-   - Auto-Bounding-Box, Größe 800×400 (responsive-friendly für SPA)
-   - HTTP GET an Mapbox Static Images API, Response = PNG Buffer
-   - Style: `mapbox/streets-v12` (Standard Straßenkarte, ähnlich Google Maps)
+   - Adapter-Interface, aktuelle Implementierung: OpenTopoMap via npm `staticmaps`
+   - Nimmt alle motorisierten Segmente, vereinfacht Geometrie (Douglas-Peucker, max ~1000 Punkte)
+   - Tile-Source: `https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png` mit lokalem Tile-Cache + Custom User-Agent
+   - Polyline `#c0392b` (rot), Stärke 4, Opacity 0.85
+   - Start-Marker grün, End-Marker rot (kleine Kreise mit weißem Border)
+   - Auto-Bounding-Box mit ~5% Padding, Größe 800×400 (responsive-friendly für SPA)
+   - Output: PNG Buffer
 
 4. `router.ts` — neue API-Routen:
    - `POST /api/v1/trips/:tripId/timeline/preview` — Body: JSON-Datei (multipart). Antwort: `{ days: [{ date, distance_km, driving_minutes, modes, segment_count, has_existing_route_image }] }`. Kein Side-Effect.
@@ -170,9 +183,13 @@ ALTER TABLE journal_entries ADD COLUMN route_meta JSONB;
 - `route_image_path`: SFTP-Pfad für Cleanup (analog `media.file_path`)
 - `route_meta`: `{ distance_km: number, driving_minutes: number, modes: string[], walking_km?: number, segment_count: number, source: 'google-timeline', imported_at: ISO }`
 
-**Mapbox-Token-Setup**:
-- Backend `.env`: `MAPBOX_TOKEN=<read-scope-token>`
-- Token wird beim Mapbox-Account erstellt (kostenlos, nur Read-Scope nötig)
+**OpenTopoMap-Setup** (kein Token nötig):
+- Tile-Cache-Verzeichnis auf LXC 111: `/var/cache/opentopomap-tiles/{z}/{x}/{y}.png`
+- HTTP-Client mit User-Agent-Header `reise-app/1.0 (https://api.toenhardt.de)` (OpenTopoMap-Tile-Usage-Policy)
+- Backend `.env` neue Vars (optional, mit Defaults):
+  - `OPENTOPOMAP_TILE_CACHE=/var/cache/opentopomap-tiles`
+  - `OPENTOPOMAP_TILE_TTL_DAYS=30`
+- npm `staticmaps` (^1.x) als Dependency
 - Doku in `backend/.env.example` ergänzen
 
 **Strato-Pfad-Schema**:
@@ -200,7 +217,7 @@ ALTER TABLE journal_entries ADD COLUMN route_meta JSONB;
 | JSON parsefehler / unbekanntes Format | HTTP 400 mit Hinweis „Format nicht erkannt — beide Google-Timeline-Varianten unterstützt" |
 | JSON > 50 MB | HTTP 413, mit Hinweis auf Aufteilen (sehr unwahrscheinlich für Reisedauer ≤ 4 Wochen, Schutz gegen Volldump) |
 | Trip ohne `start_date` / `end_date` | HTTP 422 — Vorab in PWA prüfen, Button disabled mit Hinweis „Reise braucht Datumsbereich" |
-| Mapbox-API-Fehler (401, Quota, Netzwerk) | Pro Tag in `errors[]` zurückgeben, andere Tage trotzdem verarbeiten. PWA zeigt Liste am Ende |
+| OpenTopoMap-Tile-Server unerreichbar / 429 Rate-Limit | Pro Tag in `errors[]` zurückgeben, andere Tage trotzdem verarbeiten. Tile-Cache mildert das stark; Retry mit Backoff bei einzelnen Tiles |
 | Strato SFTP-Fehler | Analog Sub-Projekt 1: Verbindung in `finally` schließen, Fehler in `errors[]`, andere Tage weiter |
 | Tag liegt außerhalb `trip.start_date..end_date` | Aus Vorschau-Liste rausgefiltert, in einer Notiz aufgeführt: „3 Tage außerhalb des Trip-Datumsbereichs übersprungen" |
 | Race: Import läuft, jemand publisht denselben Tag | In-Memory-Lock pro `tripId` (analog `publish/lock.ts`), Publish wartet kurz oder gibt 423 |
@@ -231,7 +248,7 @@ ALTER TABLE journal_entries ADD COLUMN route_meta JSONB;
 5. Publish nach toenhardt.de zeigt Karte als erstes Image, mit Distanz/Zeit als Caption
 6. Re-Import mit Overwrite ersetzt Bild + Metadaten, lässt andere Inhalte (Texte, Fotos) unangetastet
 7. Tag mit nur Walking erzeugt kein Bild, wird im UI als „Standtag" markiert
-8. Mapbox-Quota-Limit (simuliert via 429) führt zu sauberer Fehlermeldung pro Tag, andere Tage bleiben erfolgreich
+8. OpenTopoMap-Tile-Server-Fehler (simuliert via 429/503) führt zu sauberer Fehlermeldung pro Tag, andere Tage bleiben erfolgreich
 9. Bestehende Reisen ohne Routendaten verhalten sich unverändert (Migration 007 setzt nur Spalten auf NULL)
 
 ---
@@ -241,7 +258,7 @@ ALTER TABLE journal_entries ADD COLUMN route_meta JSONB;
 **Explizit enthalten:**
 - Migration 007 (`route_image_url`, `route_image_path`, `route_meta`)
 - Backend-Modul `timeline/` mit Parser/Splitter/Map/Router
-- Mapbox-Static-Images-Integration als Map-Provider
+- OpenTopoMap-Rendering via npm `staticmaps` mit lokalem Tile-Cache
 - 2 neue API-Routen (Preview + Import)
 - PWA: TripPage-Button + Modal + JournalEntryPage-Routen-Header
 - Publish-Template-Erweiterung
@@ -260,12 +277,12 @@ ALTER TABLE journal_entries ADD COLUMN route_meta JSONB;
 
 ## Offene Fragen für Jan beim Review
 
-1. **Map-Provider** — Mapbox (modern, free, kein Billing) ODER Google (drop-in zum bisherigen Look, Cloud-Setup nötig) — siehe Entscheidung 3
+1. ~~**Map-Provider**~~ — ✅ ENTSCHIEDEN: OpenTopoMap self-rendered (siehe Entscheidung 3)
 2. **Auto-Create-Default** — Soll der Default beim Import wirklich „neue Journal-Einträge anlegen" sein, oder zurückhaltender „nur existierende befüllen"? Siehe Entscheidung 6
 3. **Walking-Behandlung** — Walking als zweite Route-Linie in anderer Farbe mitzeichnen, oder nur als Metadaten-Notiz? Siehe Entscheidung 5
 4. **Bildgröße** — 800×400 (Standardwert) oder etwas anderes? Hängt vom späteren Layout in toenhardt.de ab
 5. **Caption-Format** — `"Tagesroute: 245 km · 3h 12min"` oder etwas spezifischeres? z.B. „Berlin → Hamburg: 245 km, 3h 12min"? (Letzteres bräuchte Ortsnamen-Reverse-Geocoding, zusätzlicher Aufwand)
-6. **Kostendach** — Mapbox hat zwar Free Tier, aber falls überschritten: Soll der Import sofort abbrechen, oder Karten ohne MAP_KEY weiter erstellen (z.B. Fallback zu OSM-Static)?
+6. **Polyline-Farbe** — Vorschlag rot `#c0392b` (knallt auf Topo-Karte) — andere Präferenz?
 
 ---
 
