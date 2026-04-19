@@ -347,11 +347,16 @@ function ImageGrid({ blockIndex, mediaIds, entry, onMove, onDelete }: {
       animation: 150,
       onEnd: (evt) => {
         if (evt.oldIndex === undefined || evt.newIndex === undefined) return;
-        const fromBlock = Number((evt.from as HTMLElement).dataset.block);
-        const toBlock = Number((evt.to as HTMLElement).dataset.block);
+        const fromEl = evt.from as HTMLElement;
+        const toEl = evt.to as HTMLElement;
+        const fromBlock = Number(fromEl.dataset.block);
+        const toBlock = Number(toEl.dataset.block);
         const mediaId = (evt.item as HTMLElement).dataset.id;
         if (!mediaId || Number.isNaN(fromBlock) || Number.isNaN(toBlock)) return;
         if (fromBlock === toBlock && evt.oldIndex === evt.newIndex) return;
+        // Revert DOM: Sortable already moved the node; restore it so React's next render matches its VDOM
+        const anchor = fromEl.children[evt.oldIndex] ?? null;
+        fromEl.insertBefore(evt.item, anchor);
         onMoveRef.current(fromBlock, toBlock, mediaId, evt.newIndex);
       },
     });
