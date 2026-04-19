@@ -157,6 +157,17 @@ export default function JournalEntryPage() {
           <ModeToggle />
         </div>
 
+        {entry.route_image_url && (
+          <div style={{ margin: '16px 0', borderRadius: 8, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+            <img src={entry.route_image_url} alt="Tagesroute" style={{ width: '100%', height: 'auto', display: 'block' }} />
+            {entry.route_meta && (
+              <div style={{ padding: '8px 12px', background: '#fafafa', fontSize: 13, color: '#555' }}>
+                Importiert {new Date(entry.route_meta.imported_at).toLocaleDateString('de-DE')} aus Google Timeline
+              </div>
+            )}
+          </div>
+        )}
+
         <PhotoUpload
           tripId={tripId!}
           entryId={entryId!}
@@ -212,6 +223,17 @@ export default function JournalEntryPage() {
             </button>
           </div>
         </div>
+
+        {entry.route_image_url && (
+          <div style={{ margin: '16px 0', borderRadius: 8, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+            <img src={entry.route_image_url} alt="Tagesroute" style={{ width: '100%', height: 'auto', display: 'block' }} />
+            {entry.route_meta && (
+              <div style={{ padding: '8px 12px', background: '#fafafa', fontSize: 13, color: '#555' }}>
+                Importiert {new Date(entry.route_meta.imported_at).toLocaleDateString('de-DE')} aus Google Timeline
+              </div>
+            )}
+          </div>
+        )}
 
         <div ref={blocksRef} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {blocks.map((block, i) => (
