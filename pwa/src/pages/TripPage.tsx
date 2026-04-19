@@ -156,18 +156,14 @@ export default function TripPage() {
               </div>
             );
           })()}
-          {entries.length > 0 && (
-            <div style={{ fontSize: 12, color: '#666', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>{publishedCount} von {entries.length} Tagen veröffentlicht</span>
-              {publishedCount > 0 && (
-                <button onClick={handlePublishAll} disabled={publishingAll}
-                  title="Übersicht + alle published Tage mit aktuellen Daten neu generieren"
-                  style={{ background: 'none', border: '1px solid #ccc', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontSize: 11 }}>
-                  {publishingAll ? '…' : '🔄 Alle aktualisieren'}
-                </button>
-              )}
-            </div>
-          )}
+          <div style={{ fontSize: 12, color: '#666', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+            {entries.length > 0 && <span>{publishedCount} von {entries.length} Tagen veröffentlicht</span>}
+            <button onClick={handlePublishAll} disabled={publishingAll}
+              title={publishedCount > 0 ? 'Übersicht + alle Tage neu publizieren' : 'Reise-Übersicht veröffentlichen'}
+              style={{ background: publishedCount === 0 && entries.length === 0 ? '#4a90e2' : 'none', color: publishedCount === 0 && entries.length === 0 ? '#fff' : 'inherit', border: '1px solid ' + (publishedCount === 0 && entries.length === 0 ? '#4a90e2' : '#ccc'), borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 11 }}>
+              {publishingAll ? '…' : publishedCount > 0 ? '🔄 Alle aktualisieren' : '📤 Reise veröffentlichen'}
+            </button>
+          </div>
           <InlineEditText
             value={trip.description ?? ''}
             placeholder="Beschreibung hinzufügen…"

@@ -176,7 +176,9 @@ publishRouter.post('/publish-all', async (req, res) => {
     await withTripLock(tripId, async () => {
       const trip = await loadTrip(req.user.familyId, tripId);
       if (!trip) { res.status(404).json({ error: 'Not found' }); return; }
-      if (!trip.slug) { res.json({ republished: 0 }); return; }
+
+      const slug = await assignSlugIfMissing(req.user.familyId, trip);
+      trip.slug = slug;
 
       await ensureRepoCloned();
       await pullRepo();
@@ -193,9 +195,10 @@ publishRouter.post('/publish-all', async (req, res) => {
       await writePagesJson(undefined, pages);
       await syncPagesJsonToStrato();
       await commitAndPush(`publish-all: ${trip.slug} (${published.length} tags)`);
-      res.json({ republished: published.length });
+      res.json({ republished: published.length, slug: trip.slug });
     });
   } catch (err) {
+    console.error('[publish-all]', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
