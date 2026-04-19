@@ -12,7 +12,7 @@ vi.mock('ssh2-sftp-client', () => {
   return { default: MockClient };
 });
 
-import { uploadToStrato, deleteFromStrato } from './strato';
+import { uploadToStrato, deleteFromStrato, uploadRouteMap, uploadOverviewMap } from './strato';
 import SftpClient from 'ssh2-sftp-client';
 
 describe('uploadToStrato', () => {
@@ -98,5 +98,12 @@ describe('deleteFromStrato', () => {
     await expect(deleteFromStrato('/_entwuerfe/trip-123/abc.jpg')).resolves.toBeUndefined();
     const instance = MockClient.mock.results[0].value;
     expect(instance.end).toHaveBeenCalledOnce();
+  });
+});
+
+describe('uploadRouteMap and uploadOverviewMap exports', () => {
+  it('exports both helper functions', () => {
+    expect(typeof uploadRouteMap).toBe('function');
+    expect(typeof uploadOverviewMap).toBe('function');
   });
 });
