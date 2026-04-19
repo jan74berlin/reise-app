@@ -148,7 +148,7 @@ export default function TripPage() {
               <InlineEditText value={trip.end_date ?? ''} placeholder="—" inputType="date" onSave={saveEndDate} />
             </div>
           </div>
-          {entries.length === 0 && trip && (() => {
+          {trip && (() => {
             const d = daysUntilStart(trip);
             if (d === null) return null;
             const label = d === 0 ? 'Heute geht\u2019s los!' : d === 1 ? 'Morgen geht\u2019s los!' : `Noch ${d} Tage bis zum Start`;
