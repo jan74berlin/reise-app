@@ -10,12 +10,15 @@ describe('parseTimeline', () => {
   it('parses new semanticSegments format', () => {
     const segs = parseTimeline(NEW);
     expect(segs.length).toBeGreaterThan(0);
+
     const path1 = segs.find(s => s.kind === 'path' && s.start.toISOString().startsWith('2025-07-19T06:00'));
-    expect(path1?.points?.length).toBe(3); // ± wurde übersprungen
-    expect(path1?.points?.[0].lat).toBeCloseTo(52.68, 1);
+    expect(path1).toBeDefined();
+    expect(path1!.points?.length).toBe(3);
+    expect(path1!.points?.[0].lat).toBeCloseTo(52.68, 1);
 
     const act = segs.find(s => s.kind === 'activity' && s.mode === 'driving');
-    expect(act?.distanceMeters).toBe(350000);
+    expect(act).toBeDefined();
+    expect(act!.distanceMeters).toBe(350000);
 
     const walk = segs.find(s => s.mode === 'walking');
     expect(walk).toBeDefined();
@@ -24,9 +27,10 @@ describe('parseTimeline', () => {
   it('parses legacy timelineObjects format', () => {
     const segs = parseTimeline(LEGACY);
     const act = segs.find(s => s.kind === 'activity');
-    expect(act?.mode).toBe('driving');
-    expect(act?.distanceMeters).toBe(350000);
-    expect(act?.points?.length).toBe(4);
+    expect(act).toBeDefined();
+    expect(act!.mode).toBe('driving');
+    expect(act!.distanceMeters).toBe(350000);
+    expect(act!.points?.length).toBe(4);
   });
 
   it('rejects unknown format', () => {

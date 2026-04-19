@@ -62,7 +62,7 @@ function parseSemanticSegments(data: any): ParsedSegment[] {
         start,
         end,
         mode: mapMode(s.activity.topCandidate.type),
-        distanceMeters: s.activity.distanceMeters ?? 0,
+        distanceMeters: s.activity.distanceMeters,
       });
     }
     if (s.visit) {
@@ -90,7 +90,7 @@ function parseTimelineObjects(data: any): ParsedSegment[] {
         kind: 'activity',
         start, end,
         mode: mapMode(a.activityType),
-        distanceMeters: a.distance ?? 0,
+        distanceMeters: a.distance,
         points: pts.length ? pts : undefined,
       });
     } else if (obj.placeVisit) {
