@@ -120,7 +120,16 @@ export default function JournalEntryPage() {
     }));
   }
 
-  function onMediaUploaded(blockIndex: number, mediaId: string) {
+  function appendMediaToEntry(mediaId: string, url: string) {
+    setEntry(prev => {
+      if (!prev) return prev;
+      if (prev.media.some(m => m.id === mediaId)) return prev;
+      return { ...prev, media: [...prev.media, { id: mediaId, url, filename: '' }] };
+    });
+  }
+
+  function onMediaUploaded(blockIndex: number, mediaId: string, url: string) {
+    appendMediaToEntry(mediaId, url);
     setBlocks(b => b.map((block, j) => {
       if (j !== blockIndex || block.type !== 'images') return block;
       return { type: 'images', media_ids: [...block.media_ids, mediaId] };
@@ -128,7 +137,8 @@ export default function JournalEntryPage() {
   }
 
   // Mobile mode: save after each upload using callback form to avoid stale closure
-  function onMobileUploaded(mediaId: string) {
+  function onMobileUploaded(mediaId: string, url: string) {
+    appendMediaToEntry(mediaId, url);
     setBlocks(prevBlocks => {
       const lastImgIdx = prevBlocks.map((b, i) => b.type === 'images' ? i : -1).filter(i => i >= 0).pop();
       const newBlocks: Block[] = lastImgIdx !== undefined
@@ -171,7 +181,7 @@ export default function JournalEntryPage() {
         <PhotoUpload
           tripId={tripId!}
           entryId={entryId!}
-          onUploaded={(id) => onMobileUploaded(id)}
+          onUploaded={(id, url) => onMobileUploaded(id, url)}
         />
 
         <button
@@ -268,7 +278,7 @@ export default function JournalEntryPage() {
                     <PhotoUpload
                       tripId={tripId!}
                       entryId={entryId!}
-                      onUploaded={(id) => onMediaUploaded(i, id)}
+                      onUploaded={(id, url) => onMediaUploaded(i, id, url)}
                     />
                   </div>
                 )}
