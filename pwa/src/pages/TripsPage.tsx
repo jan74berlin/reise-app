@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getTrips, createTrip } from '../api/trips';
+import { getTrips, createTrip, updateTrip } from '../api/trips';
 import { useAuth } from '../contexts/AuthContext';
 import ModeToggle from '../components/ModeToggle';
 import type { Trip } from '../types';
@@ -83,11 +83,15 @@ export default function TripsPage() {
             {g.year ?? 'Ohne Datum'}
           </div>
           {g.trips.map(t => (
-            <div key={t.id} onClick={() => navigate(`/trips/${t.id}`)}
-              style={{ background: '#f5f7fa', borderRadius: 10, padding: '14px 16px', marginBottom: 10, cursor: 'pointer', borderLeft: '4px solid #4a90e2' }}>
-              <div style={{ fontWeight: 600 }}>{t.title}</div>
-              {t.start_date && <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>{t.start_date} – {t.end_date ?? '?'}</div>}
-            </div>
+            <TripCard
+              key={t.id}
+              trip={t}
+              onOpen={() => navigate(`/trips/${t.id}`)}
+              onRename={async (v) => {
+                const { trip: updated } = await updateTrip(t.id, { title: v });
+                setTrips(prev => prev.map(x => x.id === t.id ? updated : x));
+              }}
+            />
           ))}
         </div>
       ))}
@@ -124,6 +128,63 @@ export default function TripsPage() {
           style={{ marginTop: 12, padding: '10px 16px', borderRadius: 8, border: '2px dashed #4a90e2', background: '#f0f6ff', color: '#4a90e2', cursor: 'pointer', fontSize: 14, width: '100%' }}>
           + Neue Reise
         </button>
+      )}
+    </div>
+  );
+}
+
+function TripCard({ trip, onOpen, onRename }: { trip: Trip; onOpen: () => void; onRename: (v: string) => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(trip.title);
+  const [saving, setSaving] = useState(false);
+
+  function startEdit(e: React.MouseEvent) {
+    e.stopPropagation();
+    setDraft(trip.title);
+    setEditing(true);
+  }
+  async function save(e?: React.MouseEvent | React.FormEvent) {
+    e?.stopPropagation();
+    e?.preventDefault();
+    const v = draft.trim();
+    if (!v || saving) return;
+    setSaving(true);
+    try {
+      await onRename(v);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+  function cancel(e: React.MouseEvent) {
+    e.stopPropagation();
+    setEditing(false);
+  }
+
+  return (
+    <div onClick={editing ? undefined : onOpen}
+      style={{ background: '#f5f7fa', borderRadius: 10, padding: '14px 16px', marginBottom: 10, cursor: editing ? 'default' : 'pointer', borderLeft: '4px solid #4a90e2', display: 'flex', alignItems: 'center', gap: 10 }}>
+      {editing ? (
+        <form onSubmit={save} style={{ flex: 1, display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
+          <input value={draft} onChange={e => setDraft(e.target.value)} autoFocus
+            onKeyDown={e => { if (e.key === 'Escape') setEditing(false); }}
+            style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid #ccc', fontSize: 15 }} />
+          <button type="submit" disabled={saving || !draft.trim()}
+            style={{ padding: '6px 12px', borderRadius: 6, background: '#4a90e2', color: '#fff', border: 'none', cursor: 'pointer' }}>
+            {saving ? '…' : '✓'}
+          </button>
+          <button type="button" onClick={cancel}
+            style={{ padding: '6px 10px', borderRadius: 6, background: '#fff', border: '1px solid #ccc', cursor: 'pointer' }}>✕</button>
+        </form>
+      ) : (
+        <>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600 }}>{trip.title}</div>
+            {trip.start_date && <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>{trip.start_date} – {trip.end_date ?? '?'}</div>}
+          </div>
+          <button onClick={startEdit} aria-label="Umbenennen"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 4 }}>✏️</button>
+        </>
       )}
     </div>
   );
