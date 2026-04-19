@@ -124,6 +124,26 @@ export default function JournalEntryPage() {
     });
   }
 
+  function moveMediaBetweenBlocks(fromBlock: number, toBlock: number, mediaId: string, toIndex: number) {
+    setBlocks(prev => prev.map((bl, j) => {
+      if (bl.type !== 'images') return bl;
+      if (j === fromBlock && j === toBlock) {
+        const filtered = bl.media_ids.filter(id => id !== mediaId);
+        filtered.splice(toIndex, 0, mediaId);
+        return { type: 'images', media_ids: filtered };
+      }
+      if (j === fromBlock) {
+        return { type: 'images', media_ids: bl.media_ids.filter(id => id !== mediaId) };
+      }
+      if (j === toBlock) {
+        const next = [...bl.media_ids];
+        next.splice(toIndex, 0, mediaId);
+        return { type: 'images', media_ids: next };
+      }
+      return bl;
+    }));
+  }
+
   function onMediaUploaded(blockIndex: number, mediaId: string) {
     setBlocks(b => b.map((block, j) => {
       if (j !== blockIndex || block.type !== 'images') return block;
@@ -253,9 +273,7 @@ export default function JournalEntryPage() {
                       blockIndex={i}
                       mediaIds={block.media_ids}
                       entry={entry}
-                      onReorder={(ids) => setBlocks(b => b.map((bl, j) =>
-                        j !== i || bl.type !== 'images' ? bl : { type: 'images', media_ids: ids }
-                      ))}
+                      onMove={moveMediaBetweenBlocks}
                       onDelete={async (id) => {
                         await deleteMedia(tripId!, entryId!, id);
                         setBlocks(b => b.map((bl, j) =>
@@ -312,30 +330,35 @@ const addBtnStyle: React.CSSProperties = {
   padding: '8px 16px', borderRadius: 8, border: '1px dashed #aaa', background: '#f9f9f9', cursor: 'pointer', fontSize: 14,
 };
 
-function ImageGrid({ blockIndex, mediaIds, entry, onReorder, onDelete }: {
+function ImageGrid({ blockIndex, mediaIds, entry, onMove, onDelete }: {
   blockIndex: number;
   mediaIds: string[];
   entry: JournalEntry;
-  onReorder: (ids: string[]) => void;
+  onMove: (fromBlock: number, toBlock: number, mediaId: string, toIndex: number) => void;
   onDelete: (id: string) => void;
 }) {
   const gridRef = useRef<HTMLDivElement>(null);
+  const onMoveRef = useRef(onMove);
+  onMoveRef.current = onMove;
   useEffect(() => {
     if (!gridRef.current) return;
     const s = Sortable.create(gridRef.current, {
+      group: 'media',
       animation: 150,
       onEnd: (evt) => {
-        if (evt.oldIndex === undefined || evt.newIndex === undefined || evt.oldIndex === evt.newIndex) return;
-        const next = [...mediaIds];
-        const [moved] = next.splice(evt.oldIndex, 1);
-        next.splice(evt.newIndex, 0, moved);
-        onReorder(next);
+        if (evt.oldIndex === undefined || evt.newIndex === undefined) return;
+        const fromBlock = Number((evt.from as HTMLElement).dataset.block);
+        const toBlock = Number((evt.to as HTMLElement).dataset.block);
+        const mediaId = (evt.item as HTMLElement).dataset.id;
+        if (!mediaId || Number.isNaN(fromBlock) || Number.isNaN(toBlock)) return;
+        if (fromBlock === toBlock && evt.oldIndex === evt.newIndex) return;
+        onMoveRef.current(fromBlock, toBlock, mediaId, evt.newIndex);
       },
     });
     return () => s.destroy();
-  }, [mediaIds, onReorder]);
+  }, []);
   return (
-    <div ref={gridRef} data-block={blockIndex} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+    <div ref={gridRef} data-block={blockIndex} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, minHeight: 60 }}>
       {mediaIds.map(id => {
         const media = entry.media.find(m => m.id === id);
         if (!media) return null;
