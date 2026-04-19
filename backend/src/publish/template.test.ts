@@ -71,3 +71,48 @@ describe('buildOverviewPageEntry', () => {
     expect(result.value.paragraphs).toEqual([]);
   });
 });
+
+describe('buildTagPageEntry with route_image_url', () => {
+  it('prepends routeMap as i0 when entry has route_image_url', () => {
+    const trip = { id: 't1', title: 'T', slug: 'urlaub-x' };
+    const entry = {
+      id: 'e1', trip_id: 't1', date: '2025-07-19', publish_seq: 1,
+      blocks: [
+        { type: 'text', content: 'Erster Text' },
+        { type: 'images', media_ids: ['m1'] },
+      ],
+      media: [{ id: 'm1', url: 'https://example.com/photo.jpg' }],
+      route_image_url: 'https://example.com/route.png',
+    };
+    const { value } = buildTagPageEntry(trip as any, entry as any);
+    expect(value.images[0]).toBe('https://example.com/route.png');
+    expect(value.order[0]).toBe('i0');
+    expect(value.images).toContain('https://example.com/photo.jpg');
+  });
+
+  it('does not add routeMap when route_image_url is null', () => {
+    const trip = { id: 't1', title: 'T', slug: 'urlaub-x' };
+    const entry = {
+      id: 'e1', trip_id: 't1', date: '2025-07-19', publish_seq: 1,
+      blocks: [{ type: 'images', media_ids: ['m1'] }],
+      media: [{ id: 'm1', url: 'https://example.com/photo.jpg' }],
+      route_image_url: null,
+    };
+    const { value } = buildTagPageEntry(trip as any, entry as any);
+    expect(value.images[0]).toBe('https://example.com/photo.jpg');
+  });
+});
+
+describe('buildOverviewPageEntry with route_overview_url', () => {
+  it('sets routeGif from trip.route_overview_url', () => {
+    const trip = { id: 't1', title: 'T', slug: 'urlaub-x', route_overview_url: 'https://example.com/overview.png' };
+    const { value } = buildOverviewPageEntry(trip as any, []);
+    expect((value as any).routeGif).toBe('https://example.com/overview.png');
+  });
+
+  it('omits routeGif when no overview', () => {
+    const trip = { id: 't1', title: 'T', slug: 'urlaub-x' };
+    const { value } = buildOverviewPageEntry(trip as any, []);
+    expect((value as any).routeGif).toBeUndefined();
+  });
+});

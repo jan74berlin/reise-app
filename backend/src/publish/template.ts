@@ -5,6 +5,7 @@ interface Trip {
   description?: string | null;
   start_date?: string | null;
   end_date?: string | null;
+  route_overview_url?: string | null;
 }
 
 interface Media {
@@ -26,6 +27,7 @@ interface JournalEntry {
   publish_seq: number | null;
   blocks: Block[] | null;
   media: Media[];
+  route_image_url?: string | null;
 }
 
 export interface TagPageEntry {
@@ -50,6 +52,7 @@ export interface OverviewPageEntry {
     isTripOverview: true;
     start_date: string | null;
     end_date: string | null;
+    routeGif?: string;
   };
 }
 
@@ -61,6 +64,13 @@ export function buildTagPageEntry(trip: Trip, entry: JournalEntry): TagPageEntry
   const paragraphs: string[] = [];
   const images: string[] = [];
   const order: string[] = [];
+
+  // Routenkarte als i0, falls vorhanden
+  if (entry.route_image_url) {
+    images.push(entry.route_image_url);
+    order.push(`i${images.length - 1}`);
+  }
+
   for (const b of blocks) {
     if (b.type === 'text' && b.content) {
       order.push(`p${paragraphs.length}`);
@@ -95,15 +105,15 @@ export function buildOverviewPageEntry(trip: Trip, _published: JournalEntry[]): 
 
   const paragraphs = trip.description ? [trip.description] : [];
 
-  return {
-    key: trip.slug,
-    value: {
-      title: trip.title,
-      paragraphs,
-      images: [],
-      isTripOverview: true,
-      start_date: trip.start_date ?? null,
-      end_date: trip.end_date ?? null,
-    },
+  const value: OverviewPageEntry['value'] = {
+    title: trip.title,
+    paragraphs,
+    images: [],
+    isTripOverview: true,
+    start_date: trip.start_date ?? null,
+    end_date: trip.end_date ?? null,
   };
+  if (trip.route_overview_url) value.routeGif = trip.route_overview_url;
+
+  return { key: trip.slug, value };
 }

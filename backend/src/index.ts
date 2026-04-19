@@ -11,6 +11,7 @@ import { pnRouter } from './pn/router';
 import { journalRouter } from './journal/router';
 import { checklistRouter } from './checklist/router';
 import { publishRouter } from './publish/router';
+import { timelineRouter } from './timeline/router';
 
 export const app = express();
 app.use(cors({
@@ -39,6 +40,7 @@ app.use('/api/v1/pn', pnRouter);
 app.use('/api/v1/trips/:tripId/journal', journalRouter);
 app.use('/api/v1/trips/:tripId/checklist', checklistRouter);
 app.use('/api/v1/trips/:tripId', publishRouter);
+app.use('/api/v1/trips/:tripId/timeline', timelineRouter);
 
 export const server = http.createServer(app);
 

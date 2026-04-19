@@ -62,3 +62,38 @@ export async function deleteFromStrato(filePath: string): Promise<void> {
     await client.end();
   }
 }
+
+export async function uploadRouteMap(
+  tripId: string,
+  date: string,
+  buffer: Buffer,
+): Promise<{ filePath: string; url: string }> {
+  const remoteDir = `/_entwuerfe/${tripId}`;
+  const remoteFile = `${remoteDir}/route_${date}.png`;
+  const client = new SftpClient();
+  try {
+    await client.connect(getConfig());
+    await client.mkdir(remoteDir, true);
+    await client.put(buffer, remoteFile);
+  } finally {
+    await client.end();
+  }
+  return { filePath: remoteFile, url: `${getBaseUrl()}${remoteFile}` };
+}
+
+export async function uploadOverviewMap(
+  tripId: string,
+  buffer: Buffer,
+): Promise<{ filePath: string; url: string }> {
+  const remoteDir = `/_entwuerfe/${tripId}`;
+  const remoteFile = `${remoteDir}/trip-overview.png`;
+  const client = new SftpClient();
+  try {
+    await client.connect(getConfig());
+    await client.mkdir(remoteDir, true);
+    await client.put(buffer, remoteFile);
+  } finally {
+    await client.end();
+  }
+  return { filePath: remoteFile, url: `${getBaseUrl()}${remoteFile}` };
+}
