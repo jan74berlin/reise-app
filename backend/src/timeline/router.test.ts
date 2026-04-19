@@ -1,3 +1,23 @@
+import { vi } from 'vitest';
+vi.mock('../strato', () => ({
+  uploadRouteMap: vi.fn(async (tid: string, date: string) => ({
+    filePath: `/_entwuerfe/${tid}/route_${date}.png`,
+    url: `https://example.com/_entwuerfe/${tid}/route_${date}.png`,
+  })),
+  uploadOverviewMap: vi.fn(async (tid: string) => ({
+    filePath: `/_entwuerfe/${tid}/trip-overview.png`,
+    url: `https://example.com/_entwuerfe/${tid}/trip-overview.png`,
+  })),
+  uploadToStrato: vi.fn(),
+  deleteFromStrato: vi.fn(),
+}));
+vi.mock('./map', () => ({
+  renderRouteImage: vi.fn(async () => Buffer.from([0x89,0x50,0x4E,0x47])),
+}));
+vi.mock('./overview', () => ({
+  renderOverviewImage: vi.fn(async () => Buffer.from([0x89,0x50,0x4E,0x47])),
+}));
+
 import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import fs from 'fs';
@@ -52,5 +72,62 @@ describe('POST /api/v1/trips/:tripId/timeline/preview', () => {
       .set('Authorization', `Bearer ${token}`)
       .attach('file', Buffer.from('{"random":1}'), 'Timeline.json');
     expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /api/v1/trips/:tripId/timeline/import', () => {
+  it('imports selected days, auto-creates missing entries, sets route_image_url', async () => {
+    const res = await request(app)
+      .post(`/api/v1/trips/${tripId}/timeline/import`)
+      .set('Authorization', `Bearer ${token}`)
+      .field('days_to_process', JSON.stringify(['2025-07-19', '2025-07-20']))
+      .field('overwrite', JSON.stringify({}))
+      .field('auto_create', 'true')
+      .attach('file', fixture, 'Timeline.json');
+    expect(res.status).toBe(200);
+    expect(res.body.processed).toHaveLength(2);
+    const d19 = res.body.processed.find((p: any) => p.date === '2025-07-19');
+    expect(d19.route_image_url).toContain('route_2025-07-19.png');
+    expect(d19.journal_entry_id).toBeDefined();
+    expect(d19.created).toBe(true);
+
+    // Verify DB state via journal endpoint
+    const r = await request(app).get(`/api/v1/trips/${tripId}/journal`).set('Authorization', `Bearer ${token}`);
+    const e19 = r.body.entries.find((e: any) => e.date === '2025-07-19');
+    expect(e19.route_image_url).toContain('route_2025-07-19.png');
+    expect(e19.route_meta.distance_km).toBeGreaterThan(300);
+  });
+
+  it('skips days when overwrite=false and existing image present', async () => {
+    // First import as setup (overwrite to ensure fresh state)
+    await request(app)
+      .post(`/api/v1/trips/${tripId}/timeline/import`)
+      .set('Authorization', `Bearer ${token}`)
+      .field('days_to_process', JSON.stringify(['2025-07-19']))
+      .field('overwrite', JSON.stringify({ '2025-07-19': true }))
+      .field('auto_create', 'true')
+      .attach('file', fixture, 'Timeline.json');
+    // Second import without overwrite → should skip
+    const res = await request(app)
+      .post(`/api/v1/trips/${tripId}/timeline/import`)
+      .set('Authorization', `Bearer ${token}`)
+      .field('days_to_process', JSON.stringify(['2025-07-19']))
+      .field('overwrite', JSON.stringify({ '2025-07-19': false }))
+      .field('auto_create', 'true')
+      .attach('file', fixture, 'Timeline.json');
+    expect(res.body.skipped).toContainEqual(expect.objectContaining({ date: '2025-07-19', reason: 'exists' }));
+  });
+
+  it('triggers overview re-render (uploadOverviewMap called)', async () => {
+    const { uploadOverviewMap } = await import('../strato');
+    (uploadOverviewMap as any).mockClear();
+    await request(app)
+      .post(`/api/v1/trips/${tripId}/timeline/import`)
+      .set('Authorization', `Bearer ${token}`)
+      .field('days_to_process', JSON.stringify(['2025-07-19']))
+      .field('overwrite', JSON.stringify({ '2025-07-19': true }))
+      .field('auto_create', 'true')
+      .attach('file', fixture, 'Timeline.json');
+    expect(uploadOverviewMap).toHaveBeenCalledWith(tripId, expect.any(Buffer));
   });
 });
