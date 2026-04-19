@@ -77,14 +77,28 @@ export default function TripPage() {
     setTrip(updated);
   }
 
-  function getThumbnail(entry: JournalEntry): string | null {
-    const blocks = Array.isArray(entry.blocks) ? entry.blocks : [];
-    const firstImgBlock = blocks.find(b => b.type === 'images');
-    if (firstImgBlock && firstImgBlock.type === 'images' && firstImgBlock.media_ids.length > 0) {
-      const media = entry.media.find(m => m.id === firstImgBlock.media_ids[0]);
-      return media?.url ?? null;
+  function usedMediaIds(entry: JournalEntry): string[] {
+    // Legacy (non-array blocks) falls back to all media; explicit arrays count only referenced media.
+    if (!Array.isArray(entry.blocks)) return entry.media.map(m => m.id);
+    const ids: string[] = [];
+    for (const b of entry.blocks) {
+      if (b.type === 'images') ids.push(...b.media_ids);
     }
-    return entry.media[0]?.url ?? null;
+    return ids;
+  }
+
+  function getThumbnail(entry: JournalEntry): string | null {
+    const ids = usedMediaIds(entry);
+    for (const id of ids) {
+      const m = entry.media.find(x => x.id === id);
+      if (m) return m.url;
+    }
+    return null;
+  }
+
+  function photoCountFor(entry: JournalEntry): number {
+    const ids = usedMediaIds(entry);
+    return ids.filter(id => entry.media.some(m => m.id === id)).length;
   }
 
   function entryLabelDate(entry: JournalEntry): string {
@@ -145,7 +159,7 @@ export default function TripPage() {
 
       {entries.map((entry, i) => {
         const thumb = getThumbnail(entry);
-        const photoCount = entry.media.length;
+        const photoCount = photoCountFor(entry);
         const date = entryLabelDate(entry);
         return (
           <div key={entry.id} onClick={() => navigate(`/trips/${tripId}/journal/${entry.id}`)}
