@@ -24,11 +24,11 @@ export default function TripPage() {
   const publishedCount = entries.filter(e => e.is_published).length;
 
   async function handlePublishAll() {
-    if (publishingAll || publishedCount === 0) return;
+    if (publishingAll) return;
     setPublishingAll(true);
     try {
       const r = await publishAll(tripId!);
-      alert(`${r.republished} Tage aktualisiert.`);
+      alert(r.republished === 0 ? 'Reise-Übersicht veröffentlicht.' : `${r.republished} Tage aktualisiert.`);
     } catch (e) {
       alert('Fehler: ' + (e instanceof Error ? e.message : 'unbekannt'));
     } finally {
