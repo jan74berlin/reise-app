@@ -330,4 +330,62 @@ toenhardt.de: Karte als erstes Bild im Tag, Caption "245 km · 3h 12min"
 
 ---
 
-**Ende des Entwurfs.** Wenn Jan zustimmt (oder gezielt Punkte ändert), wird daraus ein Implementierungsplan via `superpowers:writing-plans`-Skill, dann Sub-Projekt-Implementierung analog zu 1–3.
+## Finalisierungen aus Live-Test 19.04.2026
+
+Manueller Test mit `urlaub-2025` (21 Tage, 7624 km, live committed `194fd82` in `jan74berlin/toenhardt`). Folgende Spec-Werte wurden im Test überschrieben:
+
+| Aspekt | Spec-Wert vorher | Final |
+|---|---|---|
+| Bildgröße Tagesroute | 800×400 | **2400×1200** (Retina-friendly) |
+| Bildgröße Trip-Übersicht | nicht spezifiziert | **2400×1400** (etwas höher für mehr Routen) |
+| Banner-Inhalt | „Tagesroute: 245 km · 3h 12min" + Modes | nur **„XXX,X km"** + **Wohnmobil-Icon** links (keine Modes-Wörter) |
+| Polyline-Stärke | 4px | **9px** Tagesroute, **7px** Übersicht |
+| Polyline-Farbe einzelner Route | rot `#c0392b` | bestätigt |
+| Polyline-Farben Übersicht | nicht spezifiziert | **kontrastreiche dunkle Palette** (Dunkelrot, Marine, Lila, Magenta, Indigo, Beere, Mahagoni…) — kein Grün/Gelb/Hellbraun (Topo-Hintergrundfarben) |
+| Marker-Radius | unspezifiziert | **1500m** Tagesroute, **3000m** Übersicht. Start grün `#27ae60`, Ende rot `#c0392b`, weißer Border 6–8px |
+| Padding | 5% | **120px** (Tagesroute), **150px** (Übersicht) |
+| Wohnmobil-Icon | nicht erwähnt | **`jan74berlin/toenhardt/wohnmobil-icon.png`** (38×20 nativ, hochskaliert auf 64px Höhe) |
+| Auto-Create | „🟡 default an" | **bestätigt: default an, Toggle im Vorschau-Dialog** |
+| Walking | „🟡 als Metadaten erwähnen" | **nicht in Karte gezeichnet, nicht im Banner-Text genannt** — `walking_km` bleibt aber im `route_meta` als Daten |
+| Caption auf toenhardt.de | separater Text-Block unter Karte | **NICHT nötig** — Banner ist ins PNG eingebrannt. `paragraphs[0]` enthält weiterhin den ersten Text-Block des Users |
+
+### Neue Anforderung: Inkrementelle Trip-Übersichtskarte
+
+Übersichtskarte (alle Tagesrouten kombiniert) wird **automatisch regeneriert** bei:
+- Jedem Timeline-Import (auch Teil-Imports während laufender Reise)
+- Jedem Publish (Sub-Projekt 3) — ergänzt zu bisheriger overview-Page-Generierung
+- Jedem Unpublish (Sub-Projekt 3) — Karte ohne diesen Tag neu rendern (auch wenn er weiter `route_image_url` hat — Übersicht zeigt nur die _publizierten_ Tage)
+
+Jede Übersichtskarte enthält alle Tagesrouten, die zum Zeitpunkt der Generierung relevant sind. Multi-Color aus der finalen Palette.
+
+**Speicherort:** ein Pfad pro Trip — `/_entwuerfe/{tripId}/trip-overview.png`.
+
+**DB-Erweiterung in Migration 007:**
+```sql
+ALTER TABLE trips ADD COLUMN route_overview_url TEXT;
+ALTER TABLE trips ADD COLUMN route_overview_path TEXT;
+ALTER TABLE trips ADD COLUMN route_overview_updated_at TIMESTAMPTZ;
+```
+
+### SPA-Patch ist bereits committed
+
+Patch in `jan74berlin/toenhardt/index.html` (Commit `194fd82`):
+- CSS: `.route-map { margin:1.5rem 0; cursor:pointer; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.15); max-width:100% }` + img-Style
+- CSS: `.tc-thumb { aspect-ratio:2/1 }` (war `height:140px`)
+- CSS: `.tg-grid { … minmax(360px, 1fr) … }` (war 230px)
+- JS in `renderTag`: erstes Bild wird via `<div class="route-map">` statt `<div class="pg"><div class="pi">` gerendert
+
+Sub-Projekt 4 setzt diesen Patch voraus — keine weitere SPA-Anpassung nötig. Trip-Übersichtskarte wird über `routeGif`-Feld auf der Trip-Overview gerendert (existierende Logik, ungekrobbt).
+
+### Anpassung Publish-Template
+
+`buildTagPageEntry` (`backend/src/publish/template.ts`):
+- Wenn `entry.route_image_url` gesetzt: an Index 0 in `images[]` einfügen, `"i0"` an Anfang von `order[]` prepended (vor allen User-Blocks). Keine Caption-Paragraph nötig (Banner ist im PNG).
+
+`buildOverviewPageEntry`:
+- Wenn `trip.route_overview_url` gesetzt: in pages.json-Entry `routeGif: trip.route_overview_url` setzen (existierende SPA-Logik rendert routeGif ungekrobbt mit max-width:100%)
+- `images[]` bleibt leer
+
+---
+
+**Ende der Finalisierungen.** Implementierungsplan wird via `superpowers:writing-plans` daraus erstellt.
