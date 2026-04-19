@@ -60,6 +60,23 @@ export default function TripPage() {
     setTrip(updated);
   }
 
+  async function saveTitle(v: string) {
+    const trimmed = v.trim();
+    if (!trimmed) throw new Error('Titel darf nicht leer sein');
+    const { trip: updated } = await updateTrip(tripId!, { title: trimmed });
+    setTrip(updated);
+  }
+
+  async function saveStartDate(v: string) {
+    const { trip: updated } = await updateTrip(tripId!, { start_date: v });
+    setTrip(updated);
+  }
+
+  async function saveEndDate(v: string) {
+    const { trip: updated } = await updateTrip(tripId!, { end_date: v });
+    setTrip(updated);
+  }
+
   function getThumbnail(entry: JournalEntry): string | null {
     const blocks = Array.isArray(entry.blocks) ? entry.blocks : [];
     const firstImgBlock = blocks.find(b => b.type === 'images');
@@ -85,19 +102,26 @@ export default function TripPage() {
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}>←</button>
-          <h1 style={{ margin: 0, fontSize: 18 }}>{trip?.title ?? 'Reise'}</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 10 }}>
+        <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}>←</button>
+        <div style={{ flex: 1, fontSize: 18, fontWeight: 600 }}>
+          {trip && <InlineEditText value={trip.title} placeholder="Titel" onSave={saveTitle} />}
         </div>
         <ModeToggle />
       </div>
 
       {trip && (
         <div style={{ marginBottom: 20 }}>
-          {trip.start_date && (
-            <div style={{ fontSize: 13, color: '#888', marginBottom: 6 }}>{formatTripDates(trip)}</div>
-          )}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 6, fontSize: 13, color: '#888' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: '#aaa', marginBottom: 2 }}>Startdatum</div>
+              <InlineEditText value={trip.start_date ?? ''} placeholder="—" inputType="date" onSave={saveStartDate} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: '#aaa', marginBottom: 2 }}>Enddatum</div>
+              <InlineEditText value={trip.end_date ?? ''} placeholder="—" inputType="date" onSave={saveEndDate} />
+            </div>
+          </div>
           {entries.length > 0 && (
             <div style={{ fontSize: 12, color: '#666', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>{publishedCount} von {entries.length} Tagen veröffentlicht</span>
