@@ -19,12 +19,14 @@ export default function TimelineImportModal({ tripId, onClose, onDone }: Props) 
   const [autoCreate, setAutoCreate] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<TimelineImportResult | null>(null);
+  const [uploadPct, setUploadPct] = useState(0);
 
   async function handlePick(f: File) {
     setFile(f); setError(null);
+    setUploadPct(0);
     setStage('analyzing');
     try {
-      const p = await previewTimeline(tripId, f);
+      const p = await previewTimeline(tripId, f, setUploadPct);
       setPreview(p);
       const sel = new Set(p.days.filter(d => d.has_motorized).map(d => d.date));
       setSelected(sel);
@@ -34,9 +36,10 @@ export default function TimelineImportModal({ tripId, onClose, onDone }: Props) 
 
   async function handleImport() {
     if (!file || !preview) return;
+    setUploadPct(0);
     setStage('importing'); setError(null);
     try {
-      const r = await importTimeline(tripId, file, [...selected], overwrite, autoCreate);
+      const r = await importTimeline(tripId, file, [...selected], overwrite, autoCreate, setUploadPct);
       setResult(r);
       setStage('result');
       onDone(r);
@@ -89,18 +92,33 @@ export default function TimelineImportModal({ tripId, onClose, onDone }: Props) 
 
         {stage === 'analyzing' && (
           <div style={{ padding: 30, textAlign: 'center' }}>
-            <p style={{ fontSize: 16, marginBottom: 8 }}>📤 Lade Timeline-Daten hoch …</p>
-            <p style={{ fontSize: 13, color: '#666' }}>
-              Datei: <code>{file?.name}</code> ({file ? Math.round(file.size / 1024 / 1024 * 10) / 10 : 0} MB)<br/>
-              Backend analysiert die Zeitachse — bei großen Dateien kann das 10–30 Sekunden dauern.
+            <p style={{ fontSize: 16, marginBottom: 8 }}>
+              {uploadPct < 100 ? '📤 Lade Timeline-Daten hoch …' : '⚙️ Backend analysiert die Zeitachse …'}
+            </p>
+            <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
+              Datei: <code>{file?.name}</code> ({file ? Math.round(file.size / 1024 / 1024 * 10) / 10 : 0} MB)
+            </p>
+            <ProgressBar pct={uploadPct} indeterminate={uploadPct >= 100} />
+            <p style={{ fontSize: 12, color: '#888', marginTop: 12 }}>
+              {uploadPct < 100 ? `${uploadPct}% hochgeladen` : 'Parsen + Gruppieren der Segmente kann 10–30 s dauern'}
             </p>
           </div>
         )}
 
         {stage === 'importing' && (
           <div style={{ padding: 30, textAlign: 'center' }}>
-            <p>Importiere {selected.size} Tage … das kann eine Weile dauern (Karten werden gerendert).</p>
-            <div className="spinner" />
+            <p style={{ fontSize: 16, marginBottom: 8 }}>
+              {uploadPct < 100
+                ? `📤 Lade Timeline-Daten hoch …`
+                : `🗺 Rendere ${selected.size} Karten …`}
+            </p>
+            <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
+              {uploadPct >= 100 && 'Pro Tag werden OpenTopoMap-Tiles geladen + Karte komponiert. Plan ~5–15 s pro Tag.'}
+            </p>
+            <ProgressBar pct={uploadPct} indeterminate={uploadPct >= 100} />
+            <p style={{ fontSize: 12, color: '#888', marginTop: 12 }}>
+              {uploadPct < 100 ? `${uploadPct}% hochgeladen` : 'Bitte warten — Backend arbeitet'}
+            </p>
           </div>
         )}
 
@@ -119,6 +137,28 @@ export default function TimelineImportModal({ tripId, onClose, onDone }: Props) 
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ProgressBar({ pct, indeterminate }: { pct: number; indeterminate: boolean }) {
+  return (
+    <div style={{ width: '100%', height: 16, background: '#eee', borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
+      {indeterminate ? (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(90deg, transparent, #1976d2, transparent)',
+          backgroundSize: '50% 100%',
+          animation: 'tlImportShimmer 1.4s linear infinite',
+        }} />
+      ) : (
+        <div style={{
+          width: `${pct}%`, height: '100%',
+          background: '#1976d2',
+          transition: 'width 0.2s ease',
+        }} />
+      )}
+      <style>{'@keyframes tlImportShimmer { 0% { background-position: -100% 0; } 100% { background-position: 200% 0; } }'}</style>
     </div>
   );
 }
