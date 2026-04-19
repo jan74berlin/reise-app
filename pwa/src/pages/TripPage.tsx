@@ -5,6 +5,7 @@ import { getEntries, createEntry } from '../api/journal';
 import { publishAll } from '../api/publish';
 import ModeToggle from '../components/ModeToggle';
 import InlineEditText from '../components/InlineEditText';
+import TimelineImportModal from '../components/TimelineImportModal';
 import type { Trip, JournalEntry } from '../types';
 
 function todayIso() {
@@ -21,6 +22,7 @@ export default function TripPage() {
   const [newDayDate, setNewDayDate] = useState(todayIso());
   const [creating, setCreating] = useState(false);
   const [publishingAll, setPublishingAll] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const publishedCount = entries.filter(e => e.is_published).length;
 
   async function handlePublishAll() {
@@ -163,6 +165,12 @@ export default function TripPage() {
               style={{ background: publishedCount === 0 && entries.length === 0 ? '#4a90e2' : 'none', color: publishedCount === 0 && entries.length === 0 ? '#fff' : 'inherit', border: '1px solid ' + (publishedCount === 0 && entries.length === 0 ? '#4a90e2' : '#ccc'), borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 11 }}>
               {publishingAll ? '…' : publishedCount > 0 ? '🔄 Alle aktualisieren' : '📤 Reise veröffentlichen'}
             </button>
+            {trip.start_date && trip.end_date && (
+              <button onClick={() => setShowImport(true)}
+                style={{ marginLeft: 8, background: 'none', border: '1px solid #ccc', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 11 }}>
+                🗺 Timeline importieren
+              </button>
+            )}
           </div>
           <InlineEditText
             value={trip.description ?? ''}
@@ -208,6 +216,17 @@ export default function TripPage() {
           style={{ marginTop: 12, padding: '10px 16px', borderRadius: 8, border: '2px dashed #4a90e2', background: '#f0f6ff', color: '#4a90e2', cursor: 'pointer', fontSize: 14, width: '100%' }}>
           + Neuer Tag
         </button>
+      )}
+
+      {showImport && (
+        <TimelineImportModal
+          tripId={tripId!}
+          onClose={() => setShowImport(false)}
+          onDone={() => {
+            setShowImport(false);
+            getEntries(tripId!).then(({ entries }) => setEntries(entries));
+          }}
+        />
       )}
     </div>
   );
