@@ -8,7 +8,7 @@ interface Props {
   onDone(result: TimelineImportResult): void;
 }
 
-type Stage = 'pick' | 'preview' | 'importing' | 'result';
+type Stage = 'pick' | 'analyzing' | 'preview' | 'importing' | 'result';
 
 export default function TimelineImportModal({ tripId, onClose, onDone }: Props) {
   const [stage, setStage] = useState<Stage>('pick');
@@ -22,13 +22,14 @@ export default function TimelineImportModal({ tripId, onClose, onDone }: Props) 
 
   async function handlePick(f: File) {
     setFile(f); setError(null);
+    setStage('analyzing');
     try {
       const p = await previewTimeline(tripId, f);
       setPreview(p);
       const sel = new Set(p.days.filter(d => d.has_motorized).map(d => d.date));
       setSelected(sel);
       setStage('preview');
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { setError((e as Error).message); setStage('pick'); }
   }
 
   async function handleImport() {
@@ -83,6 +84,16 @@ export default function TimelineImportModal({ tripId, onClose, onDone }: Props) 
               </button>
             </div>
             {error && <div style={errStyle}>{error}</div>}
+          </div>
+        )}
+
+        {stage === 'analyzing' && (
+          <div style={{ padding: 30, textAlign: 'center' }}>
+            <p style={{ fontSize: 16, marginBottom: 8 }}>📤 Lade Timeline-Daten hoch …</p>
+            <p style={{ fontSize: 13, color: '#666' }}>
+              Datei: <code>{file?.name}</code> ({file ? Math.round(file.size / 1024 / 1024 * 10) / 10 : 0} MB)<br/>
+              Backend analysiert die Zeitachse — bei großen Dateien kann das 10–30 Sekunden dauern.
+            </p>
           </div>
         )}
 
