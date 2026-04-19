@@ -5,6 +5,8 @@ import { buildTagPageEntry, buildOverviewPageEntry } from './template';
 import { slugify, ensureUniqueSlug } from './slug';
 import { withTripLock } from './lock';
 import { readPagesJson, writePagesJson, ensureRepoCloned, pullRepo, commitAndPush, syncPagesJsonToStrato } from './toenhardt-repo';
+import { renderOverviewImage, type OverviewRoute } from '../timeline/overview';
+import { uploadOverviewMap } from '../strato';
 
 const LIVE_BASE = process.env.TOENHARDT_LIVE_BASE ?? 'https://xn--tnhardt-90a.de';
 
@@ -69,6 +71,36 @@ async function assignPublishSeqIfMissing(familyId: string, tripId: string, entry
   });
 }
 
+async function regenerateOverviewMap(familyId: string, trip: any) {
+  const rows = await withFamily(familyId, (c) =>
+    c.query(
+      `SELECT date, route_meta FROM journal_entries
+       WHERE trip_id = $1 AND is_published = true
+         AND route_image_url IS NOT NULL AND route_meta IS NOT NULL
+       ORDER BY date`,
+      [trip.id]
+    )
+  );
+  const routes: OverviewRoute[] = rows.rows
+    .filter((r: any) => Array.isArray(r.route_meta?.points) && r.route_meta.points.length >= 2)
+    .map((r: any) => ({ date: r.date, points: r.route_meta.points, distanceKm: r.route_meta.distance_km ?? 0 }));
+  if (!routes.length) return null;
+  try {
+    const buf = await renderOverviewImage(trip.title, routes);
+    const { url, filePath } = await uploadOverviewMap(trip.id, buf);
+    await withFamily(familyId, (c) =>
+      c.query(
+        'UPDATE trips SET route_overview_url = $1, route_overview_path = $2, route_overview_updated_at = now() WHERE id = $3',
+        [url, filePath, trip.id]
+      )
+    );
+    return url;
+  } catch (e) {
+    console.warn('[regenerateOverviewMap] failed:', (e as Error).message);
+    return null;
+  }
+}
+
 publishRouter.get('/journal/:entryId/preview', async (req, res) => {
   const { tripId, entryId } = req.params as Record<string, string>;
   try {
@@ -111,7 +143,9 @@ publishRouter.post('/journal/:entryId/publish', async (req, res) => {
       );
 
       const published = await allPublishedForTrip(req.user.familyId, tripId);
-      const overview = buildOverviewPageEntry(trip, published);
+      await regenerateOverviewMap(req.user.familyId, trip);
+      const refreshed = await loadTrip(req.user.familyId, tripId);
+      const overview = buildOverviewPageEntry(refreshed ?? trip, published);
       pages[overview.key] = overview.value as any;
 
       await writePagesJson(undefined, pages);
@@ -156,7 +190,9 @@ publishRouter.post('/journal/:entryId/unpublish', async (req, res) => {
       );
 
       const published = await allPublishedForTrip(req.user.familyId, tripId);
-      const overview = buildOverviewPageEntry(trip, published);
+      await regenerateOverviewMap(req.user.familyId, trip);
+      const refreshed = await loadTrip(req.user.familyId, tripId);
+      const overview = buildOverviewPageEntry(refreshed ?? trip, published);
       pages[overview.key] = overview.value as any;
 
       await writePagesJson(undefined, pages);
@@ -189,7 +225,9 @@ publishRouter.post('/publish-all', async (req, res) => {
         const te = buildTagPageEntry(trip, e);
         pages[te.key] = te.value as any;
       }
-      const overview = buildOverviewPageEntry(trip, published);
+      await regenerateOverviewMap(req.user.familyId, trip);
+      const refreshed = await loadTrip(req.user.familyId, tripId);
+      const overview = buildOverviewPageEntry(refreshed ?? trip, published);
       pages[overview.key] = overview.value as any;
 
       await writePagesJson(undefined, pages);
