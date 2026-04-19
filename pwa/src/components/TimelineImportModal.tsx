@@ -4,13 +4,62 @@ import type { TimelinePreviewResponse, TimelinePreviewDay, TimelineImportResult 
 
 interface Props {
   tripId: string;
+  tripStart: string | null;
+  tripEnd: string | null;
   onClose(): void;
   onDone(result: TimelineImportResult): void;
 }
 
-type Stage = 'pick' | 'analyzing' | 'preview' | 'importing' | 'result';
+type Stage = 'pick' | 'trimming' | 'analyzing' | 'preview' | 'importing' | 'result';
 
-export default function TimelineImportModal({ tripId, onClose, onDone }: Props) {
+interface TrimStats {
+  origMb: number;
+  trimmedMb: number;
+  segmentsBefore: number;
+  segmentsAfter: number;
+}
+
+// Filter Timeline-JSON clientseitig auf Trip-Range, damit nur ~1-2 MB statt 30 MB hochgeladen werden.
+async function trimTimelineFile(file: File, start: string, end: string): Promise<{ file: File; stats: TrimStats }> {
+  const text = await file.text();
+  const data = JSON.parse(text);
+  const origMb = file.size / 1024 / 1024;
+
+  let segmentsBefore = 0;
+  let segmentsAfter = 0;
+  let trimmed: any;
+
+  if (Array.isArray(data?.semanticSegments)) {
+    segmentsBefore = data.semanticSegments.length;
+    const filtered = data.semanticSegments.filter((s: any) => {
+      const t = (s.startTime ?? '').slice(0, 10);
+      return t >= start && t <= end;
+    });
+    segmentsAfter = filtered.length;
+    trimmed = { semanticSegments: filtered };
+  } else if (Array.isArray(data?.timelineObjects)) {
+    segmentsBefore = data.timelineObjects.length;
+    const filtered = data.timelineObjects.filter((o: any) => {
+      const ts = o.activitySegment?.duration?.startTimestamp ?? o.placeVisit?.duration?.startTimestamp ?? '';
+      const t = ts.slice(0, 10);
+      return t >= start && t <= end;
+    });
+    segmentsAfter = filtered.length;
+    trimmed = { timelineObjects: filtered };
+  } else {
+    // Unknown format — pass through unfiltered, backend will reject
+    return { file, stats: { origMb, trimmedMb: origMb, segmentsBefore: 0, segmentsAfter: 0 } };
+  }
+
+  const trimmedText = JSON.stringify(trimmed);
+  const trimmedFile = new File([trimmedText], file.name, { type: 'application/json' });
+  return {
+    file: trimmedFile,
+    stats: { origMb, trimmedMb: trimmedFile.size / 1024 / 1024, segmentsBefore, segmentsAfter },
+  };
+}
+
+export default function TimelineImportModal({ tripId, tripStart, tripEnd, onClose, onDone }: Props) {
   const [stage, setStage] = useState<Stage>('pick');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<TimelinePreviewResponse | null>(null);
@@ -20,13 +69,27 @@ export default function TimelineImportModal({ tripId, onClose, onDone }: Props) 
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<TimelineImportResult | null>(null);
   const [uploadPct, setUploadPct] = useState(0);
+  const [trimStats, setTrimStats] = useState<TrimStats | null>(null);
 
-  async function handlePick(f: File) {
-    setFile(f); setError(null);
+  async function handlePick(rawFile: File) {
+    setError(null);
     setUploadPct(0);
+    setTrimStats(null);
+
+    let workingFile = rawFile;
+    if (tripStart && tripEnd) {
+      setStage('trimming');
+      try {
+        const { file: trimmed, stats } = await trimTimelineFile(rawFile, tripStart, tripEnd);
+        workingFile = trimmed;
+        setTrimStats(stats);
+      } catch (e) { setError('Datei konnte nicht gelesen werden: ' + (e as Error).message); setStage('pick'); return; }
+    }
+    setFile(workingFile);
+
     setStage('analyzing');
     try {
-      const p = await previewTimeline(tripId, f, setUploadPct);
+      const p = await previewTimeline(tripId, workingFile, setUploadPct);
       setPreview(p);
       const sel = new Set(p.days.filter(d => d.has_motorized).map(d => d.date));
       setSelected(sel);
@@ -90,14 +153,29 @@ export default function TimelineImportModal({ tripId, onClose, onDone }: Props) 
           </div>
         )}
 
+        {stage === 'trimming' && (
+          <div style={{ padding: 30, textAlign: 'center' }}>
+            <p style={{ fontSize: 16 }}>✂️ Trimme Timeline-Daten auf Reise-Zeitraum …</p>
+            <p style={{ fontSize: 13, color: '#666', marginTop: 12 }}>
+              {tripStart} bis {tripEnd}
+            </p>
+          </div>
+        )}
+
         {stage === 'analyzing' && (
           <div style={{ padding: 30, textAlign: 'center' }}>
             <p style={{ fontSize: 16, marginBottom: 8 }}>
               {uploadPct < 100 ? '📤 Lade Timeline-Daten hoch …' : '⚙️ Backend analysiert die Zeitachse …'}
             </p>
-            <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
-              Datei: <code>{file?.name}</code> ({file ? Math.round(file.size / 1024 / 1024 * 10) / 10 : 0} MB)
+            <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>
+              Datei: <code>{file?.name}</code> ({file ? Math.round(file.size / 1024 / 1024 * 100) / 100 : 0} MB)
             </p>
+            {trimStats && (
+              <p style={{ fontSize: 12, color: '#27ae60', marginBottom: 16 }}>
+                ✓ Auf Reise-Zeitraum getrimmt: {Math.round(trimStats.origMb * 10) / 10} MB → {Math.round(trimStats.trimmedMb * 100) / 100} MB
+                ({trimStats.segmentsBefore} → {trimStats.segmentsAfter} Segmente)
+              </p>
+            )}
             <ProgressBar pct={uploadPct} indeterminate={uploadPct >= 100} />
             <p style={{ fontSize: 12, color: '#888', marginTop: 12 }}>
               {uploadPct < 100 ? `${uploadPct}% hochgeladen` : 'Parsen + Gruppieren der Segmente kann 10–30 s dauern'}

@@ -221,6 +221,8 @@ export default function TripPage() {
       {showImport && (
         <TimelineImportModal
           tripId={tripId!}
+          tripStart={trip?.start_date ?? null}
+          tripEnd={trip?.end_date ?? null}
           onClose={() => setShowImport(false)}
           onDone={() => {
             setShowImport(false);
