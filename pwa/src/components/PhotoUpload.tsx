@@ -41,6 +41,7 @@ export default function PhotoUpload({ tripId, entryId, onUploaded }: Props) {
         setFiles(s => s.map((x, j) => j === i ? { ...x, progress: 'error' } : x));
       }
     }
+    setFiles(s => s.filter(x => x.progress !== 'done'));
   }
 
   const icon: Record<ProgressState, string> = {
