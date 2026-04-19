@@ -112,6 +112,16 @@ export default function TripPage() {
     return `${t.start_date} – ${t.end_date}`;
   }
 
+  function daysUntilStart(t: Trip): number | null {
+    if (!t.start_date) return null;
+    const start = new Date(t.start_date + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffMs = start.getTime() - today.getTime();
+    const days = Math.round(diffMs / 86400000);
+    return days >= 0 ? days : null;
+  }
+
   if (loading) return <div style={{ padding: 32 }}>Lade…</div>;
 
   return (
@@ -136,6 +146,16 @@ export default function TripPage() {
               <InlineEditText value={trip.end_date ?? ''} placeholder="—" inputType="date" onSave={saveEndDate} />
             </div>
           </div>
+          {entries.length === 0 && trip && (() => {
+            const d = daysUntilStart(trip);
+            if (d === null) return null;
+            const label = d === 0 ? 'Heute geht\u2019s los!' : d === 1 ? 'Morgen geht\u2019s los!' : `Noch ${d} Tage bis zum Start`;
+            return (
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#2a9d4a', background: '#eaf7ee', borderRadius: 8, padding: '10px 14px', marginBottom: 10 }}>
+                ⏳ {label}
+              </div>
+            );
+          })()}
           {entries.length > 0 && (
             <div style={{ fontSize: 12, color: '#666', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>{publishedCount} von {entries.length} Tagen veröffentlicht</span>
